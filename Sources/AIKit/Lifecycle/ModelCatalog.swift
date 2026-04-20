@@ -10,6 +10,65 @@ public enum ModelCatalog {
 
     // MARK: GGUF (llama.cpp)
 
+    /// Gemma 4 E2B Instruct (Apr 2026). Effective 2B via Per-Layer Embeddings.
+    /// Multimodal: text + image + audio inputs on-device.
+    public static let gemma4_e2b_Q4 = ModelDescriptor(
+        name: "gemma-4-e2b-it",
+        version: "q4_k_m",
+        format: .gguf,
+        modality: .vision,
+        contextLength: 131_072,
+        files: [ModelFile(
+            relativePath: "gemma-4-e2b-it-Q4_K_M.gguf",
+            url: URL(string: "https://huggingface.co/google/gemma-4-e2b-it-gguf/resolve/main/gemma-4-e2b-it-Q4_K_M.gguf")!
+        )],
+        displayName: "Gemma 4 E2B IT (Q4_K_M, multimodal)",
+        minRAMBytes: 2_500_000_000
+    )
+
+    /// Gemma 4 E4B Instruct (Apr 2026). Effective 4B, best-in-class on-device multimodal.
+    public static let gemma4_e4b_Q4 = ModelDescriptor(
+        name: "gemma-4-e4b-it",
+        version: "q4_k_m",
+        format: .gguf,
+        modality: .vision,
+        contextLength: 131_072,
+        files: [ModelFile(
+            relativePath: "gemma-4-e4b-it-Q4_K_M.gguf",
+            url: URL(string: "https://huggingface.co/google/gemma-4-e4b-it-gguf/resolve/main/gemma-4-e4b-it-Q4_K_M.gguf")!
+        )],
+        displayName: "Gemma 4 E4B IT (Q4_K_M, multimodal)",
+        minRAMBytes: 5_000_000_000
+    )
+
+    /// Gemma 4 26B MoE Instruct (Apr 2026). Mac / high-end only.
+    public static let gemma4_26b_moe_Q4 = ModelDescriptor(
+        name: "gemma-4-26b-moe-it",
+        version: "q4_k_m",
+        format: .gguf,
+        contextLength: 131_072,
+        files: [ModelFile(
+            relativePath: "gemma-4-26b-moe-it-Q4_K_M.gguf",
+            url: URL(string: "https://huggingface.co/bartowski/gemma-4-26b-moe-it-GGUF/resolve/main/gemma-4-26b-moe-it-Q4_K_M.gguf")!
+        )],
+        displayName: "Gemma 4 26B MoE IT (Q4_K_M)",
+        minRAMBytes: 20_000_000_000
+    )
+
+    /// Gemma 4 31B Dense Instruct (Apr 2026). Server-grade quality locally on Mac Studio / high-RAM Macs.
+    public static let gemma4_31b_dense_Q4 = ModelDescriptor(
+        name: "gemma-4-31b-it",
+        version: "q4_k_m",
+        format: .gguf,
+        contextLength: 131_072,
+        files: [ModelFile(
+            relativePath: "gemma-4-31b-it-Q4_K_M.gguf",
+            url: URL(string: "https://huggingface.co/bartowski/gemma-4-31b-it-GGUF/resolve/main/gemma-4-31b-it-Q4_K_M.gguf")!
+        )],
+        displayName: "Gemma 4 31B Dense IT (Q4_K_M)",
+        minRAMBytes: 24_000_000_000
+    )
+
     /// Qwen 3 0.6B Instruct (Apr 2025). Smallest good general-purpose local model.
     public static let qwen3_0_6B_Q4 = ModelDescriptor(
         name: "qwen3-0.6b",
@@ -174,6 +233,30 @@ public enum ModelCatalog {
         displayName: "MLX Gemma 3 4B IT 4bit (multimodal)", minRAMBytes: 5_000_000_000
     )
 
+    public static let mlx_gemma4_e2b = ModelDescriptor(
+        name: "mlx-gemma-4-e2b-it", version: "4bit",
+        format: .mlx, modality: .vision, contextLength: 131_072, files: [],
+        displayName: "MLX Gemma 4 E2B IT 4bit (multimodal)", minRAMBytes: 2_500_000_000
+    )
+
+    public static let mlx_gemma4_e4b = ModelDescriptor(
+        name: "mlx-gemma-4-e4b-it", version: "4bit",
+        format: .mlx, modality: .vision, contextLength: 131_072, files: [],
+        displayName: "MLX Gemma 4 E4B IT 4bit (multimodal)", minRAMBytes: 5_000_000_000
+    )
+
+    public static let mlx_gemma4_26b_moe = ModelDescriptor(
+        name: "mlx-gemma-4-26b-moe-it", version: "4bit",
+        format: .mlx, contextLength: 131_072, files: [],
+        displayName: "MLX Gemma 4 26B MoE IT 4bit", minRAMBytes: 20_000_000_000
+    )
+
+    public static let mlx_gemma4_31b_dense = ModelDescriptor(
+        name: "mlx-gemma-4-31b-it", version: "4bit",
+        format: .mlx, contextLength: 131_072, files: [],
+        displayName: "MLX Gemma 4 31B Dense IT 4bit", minRAMBytes: 24_000_000_000
+    )
+
     public static let mlx_phi4_mini = ModelDescriptor(
         name: "mlx-phi-4-mini-instruct", version: "4bit",
         format: .mlx, contextLength: 131_072, files: [],
@@ -216,6 +299,10 @@ public enum ModelCatalog {
     // MARK: Grouped lists
 
     public static let allText: [ModelDescriptor] = [
+        gemma4_e2b_Q4,
+        gemma4_e4b_Q4,
+        gemma4_26b_moe_Q4,
+        gemma4_31b_dense_Q4,
         qwen3_0_6B_Q4,
         qwen3_1_7B_Q4,
         qwen3_4B_Q4,
@@ -225,6 +312,10 @@ public enum ModelCatalog {
         smollm3_3B_Q4,
         llama3_2_1B_Q4,
         mistralSmall3_24B_Q4,
+        mlx_gemma4_e2b,
+        mlx_gemma4_e4b,
+        mlx_gemma4_26b_moe,
+        mlx_gemma4_31b_dense,
         mlx_qwen3_0_6B,
         mlx_qwen3_1_7B,
         mlx_qwen3_4B,
@@ -237,6 +328,10 @@ public enum ModelCatalog {
     ]
 
     public static let allVision: [ModelDescriptor] = [
+        gemma4_e2b_Q4,
+        gemma4_e4b_Q4,
+        mlx_gemma4_e2b,
+        mlx_gemma4_e4b,
         mlx_qwen25_vl_3B,
         mlx_qwen25_vl_7B,
         mlx_phi4_multimodal,
@@ -248,6 +343,10 @@ public enum ModelCatalog {
     /// Maps an MLX descriptor to the `mlx-community` repo id used by ``MLXBackend``.
     public static func mlxHubId(for descriptor: ModelDescriptor) -> String? {
         switch descriptor.name {
+        case "mlx-gemma-4-e2b-it":           return "mlx-community/gemma-4-e2b-it-4bit"
+        case "mlx-gemma-4-e4b-it":           return "mlx-community/gemma-4-e4b-it-4bit"
+        case "mlx-gemma-4-26b-moe-it":       return "mlx-community/gemma-4-26b-moe-it-4bit"
+        case "mlx-gemma-4-31b-it":           return "mlx-community/gemma-4-31b-it-4bit"
         case "mlx-qwen3-0.6b":               return "mlx-community/Qwen3-0.6B-4bit"
         case "mlx-qwen3-1.7b":               return "mlx-community/Qwen3-1.7B-4bit"
         case "mlx-qwen3-4b":                 return "mlx-community/Qwen3-4B-4bit"
