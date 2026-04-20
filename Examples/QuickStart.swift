@@ -15,8 +15,8 @@ enum QuickStart {
 
     static func streaming_mlx() async throws {
         let backend = MLXBackend(
-            modelId: "qwen-2.5-0.5b-instruct",
-            hubRepoId: "mlx-community/Qwen2.5-0.5B-Instruct-4bit"
+            modelId: "qwen3-1.7b",
+            hubRepoId: "mlx-community/Qwen3-1.7B-4bit"
         )
         for try await delta in AIKit.stream("Give me 3 haikus about oceans.", backend: backend) {
             print(delta, terminator: "")

@@ -112,13 +112,13 @@ let backend: any AIBackend = FoundationModelsBackend(instructions: "Be brief.")
 let backend = CoreMLLLMBackend(model: .gemma4e2b)
 
 // 3. MLX (Apple Silicon)
-let backend = MLXBackend(modelId: "qwen-0.5b", hubRepoId: "mlx-community/Qwen2.5-0.5B-Instruct-4bit")
+let backend = MLXBackend(modelId: "qwen3-1.7b", hubRepoId: "mlx-community/Qwen3-1.7B-4bit")
 
 // 4. llama.cpp (GGUF)
 let backend = LlamaCppBackend(modelPath: ggufURL)
 
 // 5. Generic CoreML
-let backend = CoreMLBackend(configuration: .init(modelURL: mlpackageURL, tokenizerRepoId: "Qwen/Qwen2.5-0.5B-Instruct"))
+let backend = CoreMLBackend(configuration: .init(modelURL: mlpackageURL, tokenizerRepoId: "Qwen/Qwen3-1.7B-Instruct"))
 ```
 
 Or route between them with fallback:

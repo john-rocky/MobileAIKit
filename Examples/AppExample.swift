@@ -12,7 +12,7 @@ struct MobileAIKitExampleApp: App {
 
 @available(iOS 17.0, macOS 14.0, *)
 struct RootView: View {
-    let descriptor = ModelCatalog.qwen2_5_0_5B_Q4
+    let descriptor = ModelCatalog.qwen3_0_6B_Q4
     @State private var session: ChatSession?
     @State private var error: String?
 
