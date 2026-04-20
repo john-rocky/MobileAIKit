@@ -152,6 +152,20 @@ public final class ChatSession {
         isGenerating = false
     }
 
+    public func snapshot() -> ConversationSnapshot {
+        ConversationSnapshot(
+            id: UUID(),
+            messages: messages,
+            metadata: [:],
+            createdAt: Date(),
+            updatedAt: Date()
+        )
+    }
+
+    public func restore(_ snapshot: ConversationSnapshot) {
+        messages = snapshot.messages
+    }
+
     public func clear(keepSystem: Bool = true) {
         if keepSystem {
             messages = messages.filter { $0.role == .system }

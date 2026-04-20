@@ -4,11 +4,11 @@ import PackageDescription
 let package = Package(
     name: "MobileAIKit",
     platforms: [
-        .iOS(.v17),
-        .macOS(.v14),
-        .visionOS(.v1),
-        .tvOS(.v17),
-        .watchOS(.v10)
+        .iOS(.v18),
+        .macOS(.v15),
+        .visionOS(.v2),
+        .tvOS(.v18),
+        .watchOS(.v11)
     ],
     products: [
         .library(name: "AIKit", targets: ["AIKit"]),
@@ -16,6 +16,7 @@ let package = Package(
         .library(name: "AIKitMLX", targets: ["AIKitMLX"]),
         .library(name: "AIKitLlamaCpp", targets: ["AIKitLlamaCpp"]),
         .library(name: "AIKitCoreML", targets: ["AIKitCoreML"]),
+        .library(name: "AIKitCoreMLLLM", targets: ["AIKitCoreMLLLM"]),
         .library(name: "AIKitVision", targets: ["AIKitVision"]),
         .library(name: "AIKitSpeech", targets: ["AIKitSpeech"]),
         .library(name: "AIKitUI", targets: ["AIKitUI"]),
@@ -26,6 +27,7 @@ let package = Package(
             "AIKitMLX",
             "AIKitLlamaCpp",
             "AIKitCoreML",
+            "AIKitCoreMLLLM",
             "AIKitVision",
             "AIKitSpeech",
             "AIKitUI",
@@ -36,7 +38,8 @@ let package = Package(
         .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.21.2"),
         .package(url: "https://github.com/ml-explore/mlx-swift-examples", from: "2.21.0"),
         .package(url: "https://github.com/huggingface/swift-transformers", from: "0.1.17"),
-        .package(url: "https://github.com/ggml-org/llama.cpp", branch: "master")
+        .package(url: "https://github.com/ggml-org/llama.cpp", branch: "master"),
+        .package(url: "https://github.com/john-rocky/coreml-llm", branch: "main")
     ],
     targets: [
         .target(
@@ -78,6 +81,14 @@ let package = Package(
                 .product(name: "Hub", package: "swift-transformers")
             ],
             path: "Sources/AIKitCoreML"
+        ),
+        .target(
+            name: "AIKitCoreMLLLM",
+            dependencies: [
+                "AIKit",
+                .product(name: "CoreMLLLM", package: "coreml-llm")
+            ],
+            path: "Sources/AIKitCoreMLLLM"
         ),
         .target(
             name: "AIKitVision",

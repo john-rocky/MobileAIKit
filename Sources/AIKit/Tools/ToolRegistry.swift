@@ -5,9 +5,18 @@ public actor ToolRegistry {
     public var approvalHandler: (@Sendable (ToolSpec, Data) async -> Bool)?
     public var auditHandler: (@Sendable (ToolCall, ToolResult, TimeInterval) -> Void)?
     public var maxConcurrency: Int = 4
+    public var cache: ToolResultCache?
+    public var retry: ToolRetry?
+    public var dryRun: Bool = false
 
-    public init(approvalHandler: (@Sendable (ToolSpec, Data) async -> Bool)? = nil) {
+    public init(
+        approvalHandler: (@Sendable (ToolSpec, Data) async -> Bool)? = nil,
+        cache: ToolResultCache? = nil,
+        retry: ToolRetry? = nil
+    ) {
         self.approvalHandler = approvalHandler
+        self.cache = cache
+        self.retry = retry
     }
 
     public func register(_ tool: any Tool) {
@@ -52,17 +61,39 @@ public actor ToolRegistry {
             if !approved { throw AIError.approvalDenied }
         }
 
+        if dryRun {
+            let payload: [String: Any] = ["dryRun": true, "tool": call.name, "arguments": call.arguments]
+            let body = (try? JSONSerialization.data(withJSONObject: payload).map { $0 }) ?? Data()
+            return ToolResult(text: String(data: body, encoding: .utf8) ?? "dry-run", json: body)
+        }
+
+        let cacheKey = ToolResultCache.key(toolName: call.name, arguments: call.arguments)
+        if tool.spec.sideEffectFree, let cache, let cached = await cache.get(key: cacheKey) {
+            auditHandler?(call, cached, 0)
+            return cached
+        }
+
         let start = Date()
-        let result: ToolResult
-        if let timeout = tool.spec.timeout {
-            result = try await withThrowingTimeout(seconds: timeout) {
-                try await tool.execute(arguments: data)
+        let operation: @Sendable () async throws -> ToolResult = {
+            if let timeout = tool.spec.timeout {
+                return try await withThrowingTimeout(seconds: timeout) {
+                    try await tool.execute(arguments: data)
+                }
+            } else {
+                return try await tool.execute(arguments: data)
             }
+        }
+        let result: ToolResult
+        if let retry {
+            result = try await retry.run(operation)
         } else {
-            result = try await tool.execute(arguments: data)
+            result = try await operation()
         }
         let elapsed = Date().timeIntervalSince(start)
         auditHandler?(call, result, elapsed)
+        if tool.spec.sideEffectFree, let cache {
+            await cache.put(key: cacheKey, value: result)
+        }
         return result
     }
 
