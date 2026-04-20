@@ -1,0 +1,40 @@
+# MobileAIKit — Sample Apps
+
+All five samples are fully-runnable iOS SwiftUI apps that use `CoreMLLLMBackend(model: .gemma4e2b)` on-device. Every sample uses **on-device voice readback** (`TextToSpeech.speakUtterance`) so results are heard, not just seen.
+
+Generate any one with:
+
+```bash
+brew install xcodegen
+cd Samples/<Sample>
+xcodegen && open <Sample>.xcodeproj
+```
+
+| Sample | One-liner | Core pieces exercised |
+|---|---|---|
+| [`MobileAIKitDemo`](./MobileAIKitDemo) | Swiss-army demo of every MobileAIKit feature | `AIChatView`, `AIDocumentQAView`, `AIVoiceAssistantView`, `AICameraAssistantView`, `AIBenchmarkView`, web-search agent |
+| [`Moments`](./Moments) | Multimodal life journal: photo + voice → structured card stored in SQLite, searchable | `CoreMLLLMBackend`, `ImageAttachment`, `JSONSchema` + `StructuredDecoder`, `DatabaseMemoryStore`, `SpeechToText`, `TextToSpeech`, `LocationBridge` |
+| [`VoiceInterpreter`](./VoiceInterpreter) | Two-way live interpreter — tap A or B, speak, hear the translation | `SpeechToText.liveRecognition`, `AIKit.translate`, `TextToSpeech.speakUtterance` (target locale) |
+| [`MealLog`](./MealLog) | Snap meal → Gemma estimates nutrition; ask "how many calories yesterday?" by voice | `analyzeImage` via message attachment, `StructuredDecoder`, `DatabaseMemoryStore`, `SpeechToText`, `TextToSpeech` for totals + summaries |
+| [`SceneReader`](./SceneReader) | Accessibility scene narrator: photo → OCR + VLM description, follow-up Q&A, all spoken aloud | `AIKit.ocr`, `AIKit.analyzeImage`, `TextToSpeech` (slower rate), `SpeechToText` for voice follow-ups |
+| [`MeetingSummarizer`](./MeetingSummarizer) | Live meeting → structured minutes (decisions/actions/risks) with spoken readback per section | `SpeechToText.liveRecognition` (long-form), `AIKit.extract` with `MeetingExtraction` schema, `TextToSpeech` on every card |
+
+## What to change
+
+All five samples default to `CoreMLLLMBackend(model: .gemma4e2b)`. To swap the runtime, edit the `bootstrap`/`boot` method in the sample's `App.swift`:
+
+```swift
+// Fallback to llama.cpp GGUF
+import AIKitLlamaCpp
+let backend = LlamaCppBackend(modelPath: ggufURL, template: .auto(name: "gemma-4"))
+
+// MLX on Apple Silicon
+import AIKitMLX
+let backend = MLXBackend(modelId: "mlx-gemma-4-e4b-it", hubRepoId: "mlx-community/gemma-4-e4b-it-4bit")
+
+// iOS 26+ built-in
+import AIKitFoundationModels
+let backend = FoundationModelsBackend(instructions: "Be concise.")
+```
+
+All voice features use Apple's `SFSpeechRecognizer` / `AVSpeechSynthesizer` under the hood, so nothing leaves the device.
