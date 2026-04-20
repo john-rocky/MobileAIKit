@@ -1,10 +1,11 @@
 .DS_Store
 .build/
 .swiftpm/
-*.xcodeproj/
 Packages/
 xcuserdata/
 DerivedData/
+*.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
 .netrc
 *.mlmodelc
 *.mlpackage
