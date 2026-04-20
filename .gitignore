@@ -1,0 +1,15 @@
+.DS_Store
+.build/
+.swiftpm/
+*.xcodeproj/
+Packages/
+xcuserdata/
+DerivedData/
+.netrc
+*.mlmodelc
+*.mlpackage
+*.mlmodel
+*.gguf
+*.safetensors
+*.bin
+Models/
