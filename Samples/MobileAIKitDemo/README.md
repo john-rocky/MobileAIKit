@@ -15,7 +15,7 @@ If you prefer not to install XcodeGen: create a new iOS App target in Xcode, dra
 
 ## What it does
 
-On first launch the app downloads a small GGUF model (Qwen 2.5 0.5B, ~400 MB) via `ModelDownloader` with progress UI, then hands you a home screen with:
+On first launch the app downloads a small GGUF model (Qwen 3 0.6B, ~400 MB) via `ModelDownloader` with progress UI, then hands you a home screen with:
 
 - Streaming chat
 - Prompt playground
@@ -47,5 +47,5 @@ To use MLX:
 
 ```swift
 import AIKitMLX
-backend = MLXBackend(modelId: "qwen-0.5b", hubRepoId: "mlx-community/Qwen2.5-0.5B-Instruct-4bit")
+backend = MLXBackend(modelId: "qwen3-1.7b", hubRepoId: "mlx-community/Qwen3-1.7B-4bit")
 ```

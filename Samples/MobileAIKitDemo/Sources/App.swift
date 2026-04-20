@@ -18,7 +18,7 @@ struct RootView: View {
     @State private var downloading = false
     @State private var progress: Double = 0
 
-    let descriptor = ModelCatalog.qwen2_5_0_5B_Q4
+    let descriptor = ModelCatalog.qwen3_0_6B_Q4
 
     var body: some View {
         NavigationStack {
