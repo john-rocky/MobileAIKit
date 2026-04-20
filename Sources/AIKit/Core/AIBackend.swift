@@ -1,5 +1,9 @@
 import Foundation
 
+/// Runtime-declared capabilities of a backend.
+///
+/// Query with `backend.info.capabilities.contains(.vision)` before sending
+/// image attachments, for example.
 public struct BackendCapabilities: OptionSet, Sendable, Hashable, Codable {
     public let rawValue: Int
     public init(rawValue: Int) { self.rawValue = rawValue }
@@ -20,6 +24,7 @@ public struct BackendCapabilities: OptionSet, Sendable, Hashable, Codable {
     public static let logitsAccess         = BackendCapabilities(rawValue: 1 << 13)
 }
 
+/// Descriptive, runtime-queryable metadata for a backend instance.
 public struct BackendInfo: Sendable, Hashable {
     public let name: String
     public let version: String
@@ -42,6 +47,7 @@ public struct BackendInfo: Sendable, Hashable {
     }
 }
 
+/// Incremental unit emitted by ``AIBackend/stream(messages:tools:config:)``.
 public struct GenerationChunk: Sendable, Hashable {
     public let delta: String
     public let toolCall: ToolCall?
@@ -61,6 +67,7 @@ public struct GenerationChunk: Sendable, Hashable {
     }
 }
 
+/// Why a generation ended.
 public enum FinishReason: String, Sendable, Hashable, Codable {
     case stop
     case length
@@ -69,6 +76,7 @@ public enum FinishReason: String, Sendable, Hashable, Codable {
     case error
 }
 
+/// Full result returned by ``AIBackend/generate(messages:tools:config:)``.
 public struct GenerationResult: Sendable, Hashable {
     public let message: Message
     public let usage: GenerationUsage
@@ -81,27 +89,45 @@ public struct GenerationResult: Sendable, Hashable {
     }
 }
 
+/// Unified protocol for any local AI runtime.
+///
+/// Every concrete backend (CoreML-LLM, MLX, llama.cpp, Foundation Models,
+/// generic CoreML, a router) conforms to this. Call ``load()`` once before
+/// your first generation for best latency; it's also called lazily on demand.
+///
+/// Backends are **reference types and `Sendable`**. They may be shared across
+/// actors. Use a `BackendRouter` to fall back between multiple backends.
 public protocol AIBackend: Sendable, AnyObject {
+    /// Descriptive metadata including capabilities and context length.
     var info: BackendInfo { get }
+
+    /// Whether model weights are resident in memory.
     var isLoaded: Bool { get async }
 
+    /// Eagerly loads weights and warms up caches.
     func load() async throws
+
+    /// Frees model weights, clears caches.
     func unload() async
 
+    /// Produces a complete assistant message. Blocks until generation is done.
     func generate(
         messages: [Message],
         tools: [ToolSpec],
         config: GenerationConfig
     ) async throws -> GenerationResult
 
+    /// Streams ``GenerationChunk`` deltas as tokens are produced.
     func stream(
         messages: [Message],
         tools: [ToolSpec],
         config: GenerationConfig
     ) -> AsyncThrowingStream<GenerationChunk, Error>
 
+    /// Token count for the given messages using the backend's own tokenizer.
     func tokenCount(for messages: [Message]) async throws -> Int
 
+    /// Returns an embedding vector. Default throws ``AIError/unsupportedCapability(_:)``.
     func embed(_ text: String) async throws -> [Float]
 }
 

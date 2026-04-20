@@ -39,6 +39,7 @@ public final class ChatSession {
         self.telemetry = telemetry
     }
 
+    /// Appends a user message and runs one generate-respond cycle, returning the assistant message.
     public func send(
         _ text: String,
         attachments: [Attachment] = []
@@ -48,6 +49,7 @@ public final class ChatSession {
         return try await generate()
     }
 
+    /// Appends a user message and streams assistant deltas.
     public func sendStream(
         _ text: String,
         attachments: [Attachment] = []
@@ -147,11 +149,13 @@ public final class ChatSession {
         return stream
     }
 
+    /// Cancels any in-flight generation. No-op otherwise.
     public func cancel() {
         currentTask?.cancel()
         isGenerating = false
     }
 
+    /// Returns a ``ConversationSnapshot`` for persistence or undo.
     public func snapshot() -> ConversationSnapshot {
         ConversationSnapshot(
             id: UUID(),
@@ -162,10 +166,12 @@ public final class ChatSession {
         )
     }
 
+    /// Restores messages from a ``ConversationSnapshot``.
     public func restore(_ snapshot: ConversationSnapshot) {
         messages = snapshot.messages
     }
 
+    /// Clears messages. If `keepSystem` is true, keeps system-role messages.
     public func clear(keepSystem: Bool = true) {
         if keepSystem {
             messages = messages.filter { $0.role == .system }

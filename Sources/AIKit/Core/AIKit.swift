@@ -1,8 +1,24 @@
 import Foundation
 
+/// Top-level Swift-first entry point for running local AI features.
+///
+/// `AIKit` exposes simple one-shot helpers (``chat(_:backend:systemPrompt:config:)``,
+/// ``stream(_:backend:systemPrompt:config:)``, ``extract(_:from:schema:instruction:backend:)``, …)
+/// that work identically across every bundled ``AIBackend`` (CoreML-LLM, MLX, llama.cpp,
+/// Apple Foundation Models, generic CoreML).
+///
+/// Use ``ChatSession`` when you need state, tool calls, memory, or retrieval.
 public enum AIKit {
+    /// Package version string.
     public static let version = "0.1.0"
 
+    /// Generates a complete answer for `prompt` using `backend`.
+    /// - Parameters:
+    ///   - prompt: User message text.
+    ///   - backend: Any ``AIBackend`` instance (e.g. `LlamaCppBackend`).
+    ///   - systemPrompt: Optional system instruction prepended to the request.
+    ///   - config: Generation options. Defaults to ``GenerationConfig/default``.
+    /// - Returns: The full assistant text.
     public static func chat(
         _ prompt: String,
         backend: any AIBackend,
@@ -16,6 +32,7 @@ public enum AIKit {
         return result.message.content
     }
 
+    /// Streams deltas for `prompt` as they're produced.
     public static func stream(
         _ prompt: String,
         backend: any AIBackend,
@@ -43,6 +60,7 @@ public enum AIKit {
         }
     }
 
+    /// Creates an `@Observable` ``ChatSession`` with sensible defaults.
     @MainActor
     public static func session(
         backend: any AIBackend,
@@ -52,6 +70,10 @@ public enum AIKit {
         ChatSession(backend: backend, systemPrompt: systemPrompt, config: config)
     }
 
+    /// Extracts a `Codable` value of `type` from `text`.
+    ///
+    /// The schema is embedded in the system prompt so the model replies with valid JSON,
+    /// which is then repaired (trailing commas / fences removed) before decoding.
     public static func extract<T: Decodable & Sendable>(
         _ type: T.Type,
         from text: String,
@@ -71,6 +93,7 @@ public enum AIKit {
         return try StructuredDecoder().decode(type, from: result.message.content)
     }
 
+    /// Classifies `text` into one of `Label`'s cases. `Label.rawValue` must be `String`.
     public static func classify<Label: RawRepresentable & CaseIterable & Sendable>(
         _ text: String,
         labels: Label.Type,
@@ -90,10 +113,12 @@ public enum AIKit {
         return value
     }
 
+    /// Returns an embedding vector for `text` if the backend supports ``BackendCapabilities/embeddings``.
     public static func embed(_ text: String, backend: any AIBackend) async throws -> [Float] {
         try await backend.embed(text)
     }
 
+    /// TL;DR-style summary of `text`. See ``SummaryStyle`` for alternatives.
     public static func summarize(
         _ text: String,
         style: SummaryStyle = .tldr,
@@ -102,6 +127,7 @@ public enum AIKit {
         try await Skills(backend: backend).summarize(text, style: style)
     }
 
+    /// Rewrites `text` in the given ``RewriteStyle``.
     public static func rewrite(
         _ text: String,
         style: RewriteStyle,
@@ -110,6 +136,7 @@ public enum AIKit {
         try await Skills(backend: backend).rewrite(text, style: style)
     }
 
+    /// Translates `text` into `locale` (any human-language identifier like `"ja"` or `"fr-CA"`).
     public static func translate(
         _ text: String,
         to locale: String,
@@ -118,6 +145,7 @@ public enum AIKit {
         try await Skills(backend: backend).translate(text, to: locale)
     }
 
+    /// Extracts up to `maxTags` short keyword tags describing `text`.
     public static func tag(
         _ text: String,
         maxTags: Int = 6,
@@ -126,6 +154,7 @@ public enum AIKit {
         try await Skills(backend: backend).tag(text, maxTags: maxTags)
     }
 
+    /// Asks the vision-capable `backend` to describe or answer something about `attachment`.
     public static func analyzeImage(
         _ attachment: ImageAttachment,
         prompt: String = "Describe this image.",
@@ -139,6 +168,7 @@ public enum AIKit {
         return result.message.content
     }
 
+    /// Vision prompt across multiple images in one message.
     public static func analyzeImages(
         _ attachments: [ImageAttachment],
         prompt: String = "Describe these images.",
@@ -153,6 +183,7 @@ public enum AIKit {
         return result.message.content
     }
 
+    /// Vision prompt over a local video (sampling happens in the backend if supported).
     public static func analyzeVideo(
         _ attachment: VideoAttachment,
         prompt: String = "Describe this video.",
@@ -163,6 +194,7 @@ public enum AIKit {
         return result.message.content
     }
 
+    /// Runs a tool-calling loop until the model produces a plain text answer or iteration cap (8) hits.
     public static func askWithTools(
         _ prompt: String,
         tools: ToolRegistry,
