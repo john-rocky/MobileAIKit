@@ -5,7 +5,10 @@ import AVFoundation
 #endif
 
 #if canImport(AVFoundation)
-public final class TextToSpeech: NSObject, @unchecked Sendable, AVSpeechSynthesizerDelegate {
+public final class TextToSpeech: NSObject, @unchecked Sendable, AVSpeechSynthesizerDelegate, VoiceSpeaker {
+    public func speak(_ text: String) async {
+        await speakUtterance(text, locale: nil, voice: nil)
+    }
     private let synthesizer = AVSpeechSynthesizer()
     public var defaultLocale: Locale
     public var rate: Float
@@ -24,7 +27,7 @@ public final class TextToSpeech: NSObject, @unchecked Sendable, AVSpeechSynthesi
         synthesizer.delegate = self
     }
 
-    public func speak(
+    public func speakUtterance(
         _ text: String,
         locale: Locale? = nil,
         voice: AVSpeechSynthesisVoice? = nil

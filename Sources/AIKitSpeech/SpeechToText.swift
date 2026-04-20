@@ -21,7 +21,27 @@ public struct STTResult: Sendable, Hashable, Codable {
 }
 
 #if canImport(Speech)
-public final class SpeechToText: @unchecked Sendable {
+public final class SpeechToText: @unchecked Sendable, VoiceTranscriber {
+    public func live() throws -> AsyncThrowingStream<VoiceTranscriberResult, Error> {
+        let source = try liveRecognition()
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    for try await item in source {
+                        continuation.yield(VoiceTranscriberResult(text: item.text, isFinal: item.isFinal))
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    public func requestAuthorization() async -> Bool {
+        await Self.requestAuthorization()
+    }
     public let locale: Locale
     private let recognizer: SFSpeechRecognizer
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
@@ -67,7 +87,7 @@ public final class SpeechToText: @unchecked Sendable {
         }
     }
 
-    public func live() throws -> AsyncThrowingStream<STTResult, Error> {
+    public func liveRecognition() throws -> AsyncThrowingStream<STTResult, Error> {
         AsyncThrowingStream { continuation in
             do {
                 let request = SFSpeechAudioBufferRecognitionRequest()

@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>MobileAIKitDemo</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>This demo uses speech recognition to talk with the local AI assistant.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>This demo listens to your voice for the AI assistant.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>This demo reads photos you attach to the AI.</string>
+    <key>NSCameraUsageDescription</key>
+    <string>This demo uses the camera for scene and document capture.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>Optional: lets the AI look up contacts when you ask.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Optional: lets the AI add events when you ask.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Optional: lets the AI use your current location for place lookups.</string>
+    <key>NSMotionUsageDescription</key>
+    <string>Optional: lets the AI summarise your motion data.</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>Optional: lets the AI read HealthKit metrics like step count.</string>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <true/>
+    </dict>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+</dict>
+</plist>
