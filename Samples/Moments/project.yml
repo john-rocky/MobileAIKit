@@ -1,0 +1,41 @@
+name: Moments
+options:
+  bundleIdPrefix: com.mobileaikit.moments
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+packages:
+  MobileAIKit:
+    path: ../..
+targets:
+  Moments:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.mobileaikit.moments.Moments
+        INFOPLIST_FILE: Sources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+    dependencies:
+      - package: MobileAIKit
+        product: AIKit
+      - package: MobileAIKit
+        product: AIKitUI
+      - package: MobileAIKit
+        product: AIKitCoreMLLLM
+      - package: MobileAIKit
+        product: AIKitSpeech
+      - package: MobileAIKit
+        product: AIKitVision
+      - package: MobileAIKit
+        product: AIKitIntegration
