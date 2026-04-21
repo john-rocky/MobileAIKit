@@ -9,6 +9,26 @@ import AIKit
 ///
 /// Every macro is optional so the model (or user) can report only what it can see —
 /// the HealthKit write path skips `nil` / zero fields rather than zero-writing them.
+///
+/// ## Extending vs wrapping
+///
+/// The library deliberately keeps this type HealthKit-shaped — calories, macros, water —
+/// and nothing else. App-specific fields that **HealthKit doesn't model** (meal kind like
+/// breakfast/lunch/dinner, dietary flags like vegan/halal, dish photos, UI badges) should
+/// live on a **wrapping** type, not on a subclass / extension of ``NutritionEntry``:
+///
+/// ```swift
+/// struct MealEntry: Codable {
+///     var nutrition: NutritionEntry        // feeds HealthKitBridge.saveMeal directly
+///     var kind: MealKind                   // breakfast / lunch / ...
+///     var dietaryFlags: [DietaryFlag]
+///     var imageFileName: String?
+/// }
+/// ```
+///
+/// Wrapping keeps the HealthKit write path (which only needs the nutrition slice)
+/// trivial, and lets you evolve app-specific fields without fighting the
+/// ``jsonSchema`` contract the model was prompted against.
 public struct NutritionEntry: Codable, Hashable, Sendable {
     public var name: String?
     public var calories: Double?

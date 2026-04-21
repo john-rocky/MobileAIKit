@@ -7,7 +7,7 @@ public final class CallKitBridge: NSObject, @unchecked Sendable, CXProviderDeleg
     public let provider: CXProvider
     public let controller = CXCallController()
 
-    public init(localizedName: String = "MobileAIKit") {
+    public init(localizedName: String = "LocalAIKit") {
         let config = CXProviderConfiguration()
         config.supportsVideo = false
         config.maximumCallsPerCallGroup = 1

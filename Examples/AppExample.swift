@@ -4,7 +4,7 @@ import AIKitUI
 import AIKitLlamaCpp
 
 @available(iOS 17.0, macOS 14.0, *)
-struct MobileAIKitExampleApp: App {
+struct LocalAIKitExampleApp: App {
     var body: some Scene {
         WindowGroup { RootView() }
     }

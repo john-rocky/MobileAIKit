@@ -25,7 +25,7 @@ public struct DuckDuckGoSearchProvider: WebSearchProvider {
 
     public init(
         session: URLSession = .shared,
-        userAgent: String = "MobileAIKit/1.0 (iOS)"
+        userAgent: String = "LocalAIKit/1.0 (iOS)"
     ) {
         self.session = session
         self.userAgent = userAgent

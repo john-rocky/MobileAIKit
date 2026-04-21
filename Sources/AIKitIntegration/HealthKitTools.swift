@@ -2,31 +2,64 @@ import Foundation
 import AIKit
 #if canImport(HealthKit)
 import HealthKit
+import Observation
 
+/// Observable wrapper around `HKHealthStore` with a baked-in nutrition write path.
+///
+/// Exposed as `@Observable` so SwiftUI views can react to `isNutritionAuthorized`
+/// without maintaining a parallel `@State var healthKitAuthorized: Bool`.
+@Observable
 public final class HealthKitBridge: @unchecked Sendable {
     public let store = HKHealthStore()
 
-    public init() {}
+    /// `true` after ``requestNutritionAuthorization()`` returned successfully AND every
+    /// quantity type in ``nutritionWriteTypes`` reports `.sharingAuthorized`. iOS never
+    /// tells you whether the user granted *read* access — only writes are observable —
+    /// so this flag strictly tracks the nutrition write bundle.
+    public private(set) var isNutritionAuthorized: Bool = false
+
+    /// `true` once any ``requestAuthorization(share:read:)`` call has returned. Separate
+    /// from ``isNutritionAuthorized`` because apps often request read-only scopes first.
+    public private(set) var hasRequestedAuthorization: Bool = false
+
+    public init() {
+        refreshNutritionAuthorizationFromStore()
+    }
 
     public static var isAvailable: Bool { HKHealthStore.isHealthDataAvailable() }
 
     public func requestReadAccess(for types: Set<HKObjectType>) async throws -> Bool {
-        try await withCheckedThrowingContinuation { cont in
+        let ok: Bool = try await withCheckedThrowingContinuation { cont in
             store.requestAuthorization(toShare: [], read: types) { success, error in
                 if let error { cont.resume(throwing: error) } else { cont.resume(returning: success) }
             }
         }
+        hasRequestedAuthorization = true
+        return ok
     }
 
     public func requestAuthorization(
         share: Set<HKSampleType> = [],
         read: Set<HKObjectType> = []
     ) async throws -> Bool {
-        try await withCheckedThrowingContinuation { cont in
+        let ok: Bool = try await withCheckedThrowingContinuation { cont in
             store.requestAuthorization(toShare: share, read: read) { success, error in
                 if let error { cont.resume(throwing: error) } else { cont.resume(returning: success) }
             }
         }
+        hasRequestedAuthorization = true
+        refreshNutritionAuthorizationFromStore()
+        return ok
+    }
+
+    /// Re-probe every quantity type in ``nutritionWriteTypes`` via
+    /// `authorizationStatus(for:)`. Useful after the app returns from background or
+    /// after the user toggles permissions in Settings.
+    public func refreshNutritionAuthorizationFromStore() {
+        let authorized = Self.nutritionWriteTypes.allSatisfy {
+            store.authorizationStatus(for: $0) == .sharingAuthorized
+        }
+        isNutritionAuthorized = authorized
     }
 
     public func recentStepCountTool() -> any Tool {
@@ -82,9 +115,13 @@ public final class HealthKitBridge: @unchecked Sendable {
     }
 
     /// Request write authorization for the full nutrition bundle (calories + macros + water).
+    /// Updates ``isNutritionAuthorized`` based on the per-type `authorizationStatus` after
+    /// the prompt resolves.
     @discardableResult
     public func requestNutritionAuthorization() async throws -> Bool {
-        try await requestAuthorization(share: Self.nutritionWriteTypes)
+        let ok = try await requestAuthorization(share: Self.nutritionWriteTypes)
+        refreshNutritionAuthorizationFromStore()
+        return ok
     }
 
     /// Write a nutrition entry to HealthKit. Missing macros are skipped, not zero-written.

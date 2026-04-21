@@ -10,7 +10,7 @@ enum WebSearchAgent {
         await registry.register(WebPageReader.readerTool())
 
         return try await AIKit.askWithTools(
-            "What is MobileAIKit and who built it? Cite sources.",
+            "What is LocalAIKit and who built it? Cite sources.",
             tools: registry,
             backend: backend,
             systemPrompt: "Use web_search then read_web_page to gather facts. Cite URLs in the answer."

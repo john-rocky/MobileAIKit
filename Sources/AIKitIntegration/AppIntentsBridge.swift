@@ -7,7 +7,7 @@ import AppIntents
 #if canImport(AppIntents)
 @available(iOS 17.0, macOS 14.0, *)
 public struct AIKitChatIntent: AppIntent {
-    public static var title: LocalizedStringResource = "Ask MobileAIKit"
+    public static var title: LocalizedStringResource = "Ask LocalAIKit"
 
     @Parameter(title: "Prompt")
     public var prompt: String

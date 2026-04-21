@@ -42,7 +42,7 @@ struct RootView: View {
                     }.padding()
                 } else {
                     VStack(spacing: 12) {
-                        Text("MobileAIKit Demo").font(.largeTitle).bold()
+                        Text("LocalAIKit Demo").font(.largeTitle).bold()
                         Text("Downloads a small local model and gives you a full chat UI, RAG, voice, vision, and tools on-device.")
                             .multilineTextAlignment(.center)
                             .padding()

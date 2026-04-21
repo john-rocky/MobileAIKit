@@ -5,7 +5,7 @@ import AIKitIntegration
 struct BrowseAndAskView: View {
     let backend: any AIBackend
 
-    @State private var question: String = "What is MobileAIKit?"
+    @State private var question: String = "What is LocalAIKit?"
     @State private var answer: String = ""
     @State private var isRunning = false
     @State private var error: String?

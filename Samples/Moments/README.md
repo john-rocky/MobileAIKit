@@ -2,9 +2,9 @@
 
 **Moments** is a tiny life-journaling app that runs entirely on your device. Snap a photo, say a short voice note, and let **Gemma 4 E2B** (via CoreML-LLM + ANE) weave them into a structured memory card. Everything is saved to a local SQLite store so you can semantically search your own life later without any data leaving the phone.
 
-It exercises MobileAIKit end to end:
+It exercises LocalAIKit end to end:
 
-| Feature | MobileAIKit piece used |
+| Feature | LocalAIKit piece used |
 |---|---|
 | Multimodal (image + voice prompt) | `CoreMLLLMBackend(model: .gemma4e2b)` with `Attachment.image` |
 | Structured output | `MomentExtraction` + `StructuredDecoder` over a `JSONSchema` |

@@ -1,4 +1,4 @@
-# MobileAIKit — Sample Apps
+# LocalAIKit — Sample Apps
 
 All five samples are fully-runnable iOS SwiftUI apps that use `CoreMLLLMBackend(model: .gemma4e2b)` on-device. Every sample uses **on-device voice readback** (`TextToSpeech.speakUtterance`) so results are heard, not just seen.
 
@@ -12,7 +12,7 @@ xcodegen && open <Sample>.xcodeproj
 
 | Sample | One-liner | Core pieces exercised |
 |---|---|---|
-| [`MobileAIKitDemo`](./MobileAIKitDemo) | Swiss-army demo of every MobileAIKit feature | `AIChatView`, `AIDocumentQAView`, `AIVoiceAssistantView`, `AICameraAssistantView`, `AIBenchmarkView`, web-search agent |
+| [`MobileAIKitDemo`](./MobileAIKitDemo) | Swiss-army demo of every LocalAIKit feature | `AIChatView`, `AIDocumentQAView`, `AIVoiceAssistantView`, `AICameraAssistantView`, `AIBenchmarkView`, web-search agent |
 | [`Moments`](./Moments) | Multimodal life journal: photo + voice → structured card stored in SQLite, searchable | `CoreMLLLMBackend`, `ImageAttachment`, `JSONSchema` + `StructuredDecoder`, `DatabaseMemoryStore`, `SpeechToText`, `TextToSpeech`, `LocationBridge` |
 | [`VoiceInterpreter`](./VoiceInterpreter) | Two-way live interpreter — tap A or B, speak, hear the translation | `SpeechToText.liveRecognition`, `AIKit.translate`, `TextToSpeech.speakUtterance` (target locale) |
 | [`MealLog`](./MealLog) | Snap meal → Gemma estimates nutrition; ask "how many calories yesterday?" by voice | `analyzeImage` via message attachment, `StructuredDecoder`, `DatabaseMemoryStore`, `SpeechToText`, `TextToSpeech` for totals + summaries |

@@ -11,7 +11,7 @@ public struct WebPage: Sendable, Hashable, Codable {
 public enum WebPageReader {
     public static func fetch(url: URL, session: URLSession = .shared) async throws -> WebPage {
         var request = URLRequest(url: url)
-        request.setValue("MobileAIKit/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue("LocalAIKit/1.0", forHTTPHeaderField: "User-Agent")
         let (data, response) = try await session.data(for: request)
         guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
             throw AIError.networkUnavailable

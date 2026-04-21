@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "MobileAIKit",
+    name: "LocalAIKit",
     platforms: [
         .iOS(.v18),
         .macOS(.v15),

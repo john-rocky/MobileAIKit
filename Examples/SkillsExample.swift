@@ -5,7 +5,7 @@ enum SkillsExample {
     static func summarize(backend: any AIBackend) async throws -> String {
         let skills = Skills(backend: backend)
         let long = """
-        MobileAIKit wraps CoreML-LLM, MLX, llama.cpp and Apple Foundation Models
+        LocalAIKit wraps CoreML-LLM, MLX, llama.cpp and Apple Foundation Models
         behind a single Swift API. Developers can swap runtimes, compose tools,
         build RAG pipelines, and ship SwiftUI chat interfaces in a few lines.
         """

@@ -130,7 +130,16 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
         }
     }
 
-    /// `load()` with progress — MLX factory publishes fraction-only progress we forward verbatim.
+    /// `load()` with a raw fraction callback.
+    ///
+    /// The `Double` forwarded here is whatever `Foundation.Progress.fractionCompleted` the MLX
+    /// `VLMModelFactory` publishes — in practice this covers the **HuggingFace weight download
+    /// phase** only. After the download finishes the factory flips straight to model
+    /// initialization without further progress updates, so UIs will see the bar jump from
+    /// ~0.99 to 1.0 and the model will still be warming up for ~10 s.
+    ///
+    /// If you need distinct `.downloading` / `.initializing` / `.ready` stages, prefer
+    /// ``load(phase:)`` which exposes a typed ``LoadEvent`` sequence.
     public func load(progress: @escaping @Sendable (Double) -> Void) async throws {
         lock.lock(); let existing = container; lock.unlock()
         if existing != nil { progress(1.0); return }
@@ -147,6 +156,43 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
             lock.lock()
             self.container = loaded
             lock.unlock()
+        } catch {
+            throw AIError.modelLoadFailed(error.localizedDescription)
+        }
+    }
+
+    /// Distinct lifecycle stages emitted by ``load(phase:)``.
+    public enum LoadEvent: Sendable, Hashable {
+        /// HuggingFace weight fetch in progress. `fraction` is `0.0…1.0`.
+        case downloading(fraction: Double)
+        /// Weights are on disk; the MLX factory is warming up the GPU context / KV caches.
+        case initializing
+        /// Container is resident in memory and ready to ``generate(messages:tools:config:)``.
+        case ready
+    }
+
+    /// `load()` with typed phase events so UIs can show "Downloading" vs "Warming up"
+    /// separately instead of a single opaque bar.
+    public func load(phase: @escaping @Sendable (LoadEvent) -> Void) async throws {
+        lock.lock(); let existing = container; lock.unlock()
+        if existing != nil { phase(.ready); return }
+        do {
+            let factory = VLMModelFactory.shared
+            let configuration = ModelConfiguration(id: hubRepoId)
+            MLX.GPU.set(cacheLimit: gpuCacheLimitBytes)
+            var sawDownload = false
+            let loaded = try await factory.loadContainer(
+                hub: HubApi(),
+                configuration: configuration
+            ) { p in
+                sawDownload = true
+                phase(.downloading(fraction: p.fractionCompleted))
+            }
+            if sawDownload { phase(.initializing) }
+            lock.lock()
+            self.container = loaded
+            lock.unlock()
+            phase(.ready)
         } catch {
             throw AIError.modelLoadFailed(error.localizedDescription)
         }

@@ -7,7 +7,7 @@ Go from zero to a chat UI in three lines.
 ```swift
 // Package.swift
 dependencies: [
-    .package(url: "https://github.com/john-rocky/MobileAIKit", branch: "main")
+    .package(url: "https://github.com/john-rocky/LocalAIKit", branch: "main")
 ]
 ```
 

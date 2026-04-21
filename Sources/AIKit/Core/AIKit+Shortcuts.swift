@@ -229,6 +229,10 @@ public extension AIKit {
     /// Extraction with a live delta handler — called for each token so the UI can show
     /// the model's output as it arrives instead of a dead spinner during a 10–30 s VLM run.
     /// The final decoded value is returned; repair retry still kicks in on decode failure.
+    ///
+    /// - Important: `onDelta` is invoked on the executor the backend's ``AIBackend/stream(messages:tools:config:)``
+    ///   emits from — typically a background task, *not* the main actor. Hop to your UI actor
+    ///   (e.g. `Task { @MainActor in … }`) before mutating `@State`/`@Observable` properties.
     static func extract<T: Decodable & Sendable>(
         _ type: T.Type,
         from image: ImageAttachment,
@@ -281,6 +285,67 @@ public extension AIKit {
                 )
             }
         }
+    }
+
+    #if canImport(UIKit)
+    /// `UIImage` convenience over the streaming extract path.
+    static func extract<T: Decodable & Sendable>(
+        _ type: T.Type,
+        from image: UIImage,
+        schema: JSONSchema,
+        instruction: String = "Extract the requested fields from the image.",
+        backend: any AIBackend,
+        onDelta: @escaping @Sendable (String) -> Void
+    ) async throws -> T {
+        try await extract(
+            type,
+            from: ImageAttachment(image),
+            schema: schema,
+            instruction: instruction,
+            backend: backend,
+            onDelta: onDelta
+        )
+    }
+    #endif
+
+    #if canImport(AppKit) && !targetEnvironment(macCatalyst)
+    static func extract<T: Decodable & Sendable>(
+        _ type: T.Type,
+        from image: NSImage,
+        schema: JSONSchema,
+        instruction: String = "Extract the requested fields from the image.",
+        backend: any AIBackend,
+        onDelta: @escaping @Sendable (String) -> Void
+    ) async throws -> T {
+        try await extract(
+            type,
+            from: ImageAttachment(image),
+            schema: schema,
+            instruction: instruction,
+            backend: backend,
+            onDelta: onDelta
+        )
+    }
+    #endif
+
+    /// Raw-bytes streaming extract — JPEG/PNG `Data` straight from the camera.
+    static func extract<T: Decodable & Sendable>(
+        _ type: T.Type,
+        from imageData: Data,
+        mimeType: String = "image/jpeg",
+        schema: JSONSchema,
+        instruction: String = "Extract the requested fields from the image.",
+        backend: any AIBackend,
+        onDelta: @escaping @Sendable (String) -> Void
+    ) async throws -> T {
+        try await extract(
+            type,
+            from: ImageAttachment(source: .data(imageData), mimeType: mimeType),
+            schema: schema,
+            instruction: instruction,
+            backend: backend,
+            onDelta: onDelta
+        )
     }
 
     /// Streaming raw deltas + final decoded value as an ``AsyncThrowingStream``.

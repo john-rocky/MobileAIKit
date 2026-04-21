@@ -39,7 +39,7 @@ public actor Telemetry {
 
     public init(
         maxEvents: Int = 1000,
-        logger: Logger? = Logger(subsystem: "MobileAIKit", category: "Telemetry"),
+        logger: Logger? = Logger(subsystem: "LocalAIKit", category: "Telemetry"),
         localOnly: Bool = true,
         privacyRedactor: (@Sendable (String) -> String)? = nil
     ) {

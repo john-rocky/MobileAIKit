@@ -1,4 +1,4 @@
-# MobileAIKit
+# LocalAIKit
 
 Swift-first toolkit that lets you ship local, on-device AI apps on iOS, macOS, visionOS, tvOS, and watchOS in a few lines.
 
@@ -9,7 +9,7 @@ Pick any runtime — **CoreML-LLM, Apple Foundation Models, MLX, llama.cpp, gene
 Add the package in `Package.swift` or Xcode (File → Add Package Dependencies…):
 
 ```swift
-.package(url: "https://github.com/john-rocky/MobileAIKit", branch: "main")
+.package(url: "https://github.com/john-rocky/LocalAIKit", branch: "main")
 ```
 
 Choose the products you need:
@@ -205,6 +205,17 @@ let nutrition: NutritionEntry = try await AIKit.extract(
 let hk = HealthKitBridge()
 try await hk.requestNutritionAuthorization()
 try await hk.saveMeal(nutrition)
+```
+
+Need breakfast/lunch/dinner, dietary flags, photo paths? **Wrap `NutritionEntry`**, don't extend it — keep the HealthKit-shaped payload separate from app-specific fields:
+
+```swift
+struct MealEntry: Codable {
+    var nutrition: NutritionEntry         // feeds HealthKitBridge.saveMeal
+    var kind: MealKind                    // breakfast / lunch / dinner / snack
+    var dietaryFlags: [DietaryFlag]
+    var imageFileName: String?
+}
 ```
 
 Stream tokens live during a slow VLM extract (keeps users looking at real output instead of a spinner):

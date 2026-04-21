@@ -1,6 +1,6 @@
 # MobileAIKitDemo
 
-Full iOS SwiftUI demo that exercises every major feature of MobileAIKit: chat, streaming, RAG, voice assistant, camera, OCR, web-search agent, benchmark, settings.
+Full iOS SwiftUI demo that exercises every major feature of LocalAIKit: chat, streaming, RAG, voice assistant, camera, OCR, web-search agent, benchmark, settings.
 
 ## Generate the Xcode project
 
@@ -11,7 +11,7 @@ xcodegen
 open MobileAIKitDemo.xcodeproj
 ```
 
-If you prefer not to install XcodeGen: create a new iOS App target in Xcode, drag the `Sources/` folder in, add the `MobileAIKit` package as a local package dependency (`Add Package... → Add Local...` pointing at `../..`), and link the products `AIKit`, `AIKitUI`, `AIKitLlamaCpp`, `AIKitSpeech`, `AIKitVision`, `AIKitIntegration`.
+If you prefer not to install XcodeGen: create a new iOS App target in Xcode, drag the `Sources/` folder in, add the `LocalAIKit` package as a local package dependency (`Add Package... → Add Local...` pointing at `../..`), and link the products `AIKit`, `AIKitUI`, `AIKitLlamaCpp`, `AIKitSpeech`, `AIKitVision`, `AIKitIntegration`.
 
 ## What it does
 

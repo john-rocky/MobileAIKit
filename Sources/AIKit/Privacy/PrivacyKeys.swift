@@ -1,6 +1,6 @@
 import Foundation
 
-/// Reference list of `Info.plist` usage-description keys that apps built on MobileAIKit
+/// Reference list of `Info.plist` usage-description keys that apps built on LocalAIKit
 /// typically need. iOS *crashes* the first time a capability is used without its key,
 /// so scaffolds should start from ``recommended`` and prune what they don't use.
 ///
@@ -10,7 +10,7 @@ public enum PrivacyKeys {
     public struct Entry: Sendable, Hashable {
         public let key: String
         public let suggestedValue: String
-        /// MobileAIKit feature(s) that require this key.
+        /// LocalAIKit feature(s) that require this key.
         public let requiredBy: [String]
     }
 

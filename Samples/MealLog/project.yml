@@ -11,7 +11,7 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"
     ENABLE_USER_SCRIPT_SANDBOXING: NO
 packages:
-  MobileAIKit:
+  LocalAIKit:
     path: ../..
 targets:
   MealLog:
@@ -27,9 +27,9 @@ targets:
         GENERATE_INFOPLIST_FILE: NO
         CODE_SIGN_STYLE: Automatic
     dependencies:
-      - package: MobileAIKit
+      - package: LocalAIKit
         product: AIKit
-      - package: MobileAIKit
+      - package: LocalAIKit
         product: AIKitCoreMLLLM
-      - package: MobileAIKit
+      - package: LocalAIKit
         product: AIKitSpeech
