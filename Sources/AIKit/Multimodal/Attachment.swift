@@ -1,7 +1,10 @@
 import Foundation
+import CoreGraphics
+import ImageIO
 #if canImport(UIKit)
 import UIKit
-#elseif canImport(AppKit)
+#endif
+#if canImport(AppKit)
 import AppKit
 #endif
 #if canImport(CoreImage)
@@ -53,6 +56,53 @@ public struct ImageAttachment: Sendable, Hashable, Codable {
         self.height = height
         self.mimeType = mimeType
         self.caption = caption
+    }
+
+    #if canImport(UIKit)
+    public init(_ uiImage: UIImage, compressionQuality: CGFloat = 0.9, caption: String? = nil) {
+        let data = uiImage.jpegData(compressionQuality: compressionQuality)
+            ?? uiImage.pngData()
+            ?? Data()
+        self.init(
+            source: .data(data),
+            width: Int(uiImage.size.width * uiImage.scale),
+            height: Int(uiImage.size.height * uiImage.scale),
+            mimeType: "image/jpeg",
+            caption: caption
+        )
+    }
+    #endif
+
+    #if canImport(AppKit) && !targetEnvironment(macCatalyst)
+    public init(_ nsImage: NSImage, caption: String? = nil) {
+        var data = Data()
+        if let tiff = nsImage.tiffRepresentation,
+           let rep = NSBitmapImageRep(data: tiff),
+           let encoded = rep.representation(using: .png, properties: [:]) {
+            data = encoded
+        }
+        self.init(
+            source: .data(data),
+            width: Int(nsImage.size.width),
+            height: Int(nsImage.size.height),
+            mimeType: "image/png",
+            caption: caption
+        )
+    }
+    #endif
+
+    public init(_ cgImage: CGImage, caption: String? = nil) {
+        #if canImport(UIKit)
+        self.init(UIImage(cgImage: cgImage), caption: caption)
+        #else
+        var data = Data()
+        let properties: [CFString: Any] = [:]
+        if let dest = CGImageDestinationCreateWithData(NSMutableData() as CFMutableData, "public.png" as CFString, 1, nil) {
+            CGImageDestinationAddImage(dest, cgImage, properties as CFDictionary)
+            _ = CGImageDestinationFinalize(dest)
+        }
+        self.init(source: .data(data), width: cgImage.width, height: cgImage.height, mimeType: "image/png", caption: caption)
+        #endif
     }
 
     public func loadData() async throws -> Data {

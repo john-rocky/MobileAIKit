@@ -37,6 +37,37 @@ let answer = try await AIKit.chat(
 )
 ```
 
+## One-liner recipes
+
+```swift
+let backend = CoreMLLLMBackend(model: .gemma4e2b)
+
+// Multimodal: UIImage + question in 1 line
+let caption = try await AIKit.chat("What is happening here?", image: uiImage, backend: backend)
+
+// Multiple images
+let summary = try await AIKit.analyzeImages([image1, image2, image3], prompt: "Compare.", backend: backend)
+
+// OCR from a UIImage
+let text = try await AIKit.ocr(uiImage)
+
+// Web search → LLM answer with citations (1 line)
+let news = try await AIKit.askWeb("What did Apple announce this week?", backend: backend)
+
+// Or let the LLM decide when to search (tool-calling agent)
+let research = try await AIKit.askWithWebTools("Compare Qwen 3 vs Gemma 4 on math benchmarks.", backend: backend)
+
+// Raw search results (no LLM)
+let results: [WebSearchResult] = try await AIKit.searchWeb("latest SwiftUI news")
+
+// PDF Q&A
+let answer = try await AIKit.askPDF("When does SLA reset?", pdfURL: url, backend: backend)
+
+// Voice
+let transcript = try await AIKit.transcribe(audio: audio)
+await AIKit.speak("こんにちは", locale: Locale(identifier: "ja"))
+```
+
 ## 3-line Chat UI
 
 ```swift
