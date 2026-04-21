@@ -168,11 +168,15 @@ final class CameraModel: @unchecked Sendable {
     func capture(completion: @escaping @Sendable (UIImage?) -> Void) {
         queue.async { [self] in
             let settings = AVCapturePhotoSettings()
-            let delegate = PhotoCaptureDelegate { [weak self] image in
+            // Use an ID to identify the delegate for removal — capturing
+            // the `delegate` let inside its own initializer is forbidden
+            // under Swift 6 strict concurrency.
+            let id = UUID()
+            let delegate = PhotoCaptureDelegate(id: id) { [weak self] image in
                 completion(image)
                 guard let self else { return }
                 self.queue.async {
-                    self.delegates.removeAll { ObjectIdentifier($0) == ObjectIdentifier(delegate) }
+                    self.delegates.removeAll { $0.id == id }
                 }
             }
             delegates.append(delegate)
@@ -201,8 +205,12 @@ final class CameraModel: @unchecked Sendable {
 
 @available(iOS 17.0, *)
 private final class PhotoCaptureDelegate: NSObject, AVCapturePhotoCaptureDelegate, @unchecked Sendable {
+    let id: UUID
     let handler: @Sendable (UIImage?) -> Void
-    init(handler: @escaping @Sendable (UIImage?) -> Void) { self.handler = handler }
+    init(id: UUID, handler: @escaping @Sendable (UIImage?) -> Void) {
+        self.id = id
+        self.handler = handler
+    }
 
     func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         let image = photo.fileDataRepresentation().flatMap(UIImage.init(data:))
