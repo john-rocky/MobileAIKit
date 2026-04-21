@@ -4,7 +4,7 @@ import AIKit
 @available(iOS 17.0, macOS 14.0, visionOS 1.0, *)
 public struct AIModelDownloadView: View {
     public let descriptor: ModelDescriptor
-    public let downloader: ModelDownloader
+    public let downloader: HFModelDownloader
     public let onReady: (URL) -> Void
 
     @State private var progress: DownloadProgress?
@@ -14,7 +14,7 @@ public struct AIModelDownloadView: View {
 
     public init(
         descriptor: ModelDescriptor,
-        downloader: ModelDownloader = ModelDownloader(),
+        downloader: HFModelDownloader = HFModelDownloader(),
         onReady: @escaping (URL) -> Void
     ) {
         self.descriptor = descriptor
