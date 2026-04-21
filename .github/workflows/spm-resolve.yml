@@ -4,6 +4,15 @@ name: SPM resolve
 # its Package.swift, or a version-range conflict between siblings) the moment
 # it happens, instead of when a consumer tries a clean checkout.
 #
+# Two stages, because they catch different classes of breakage:
+#   1. `swift package resolve` — fetches all packages, validates version
+#      ranges are satisfiable.
+#   2. `xcodebuild -resolvePackageDependencies` on Tests/SPMConsumer —
+#      runs Xcode's deeper graph validation. Catches constraint conflicts
+#      and missing product references that stage 1 silently accepts.
+#      Rounds 5 and 6 both slipped past stage 1 and would have been caught
+#      here.
+#
 # Resolve-only — no build, no tests. Device builds live elsewhere.
 
 on:
@@ -11,10 +20,12 @@ on:
     branches: [main]
     paths:
       - 'Package.swift'
+      - 'Tests/SPMConsumer/**'
       - '.github/workflows/spm-resolve.yml'
   pull_request:
     paths:
       - 'Package.swift'
+      - 'Tests/SPMConsumer/**'
       - '.github/workflows/spm-resolve.yml'
   schedule:
     # Daily so upstream changes on pinned branches/revisions surface quickly.
@@ -32,3 +43,8 @@ jobs:
         run: |
           rm -rf .build .swiftpm Package.resolved
           swift package resolve
+      - name: Consumer-graph resolve (Xcode, catches what stage 1 misses)
+        working-directory: Tests/SPMConsumer
+        run: |
+          rm -rf .build .swiftpm Package.resolved
+          xcodebuild -resolvePackageDependencies -packagePath .

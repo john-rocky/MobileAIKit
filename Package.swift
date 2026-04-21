@@ -40,13 +40,26 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.21.2"),
-        .package(url: "https://github.com/ml-explore/mlx-swift-examples", from: "2.21.0"),
-        .package(url: "https://github.com/huggingface/swift-transformers", from: "1.1.0"),
+        // Pinned to 2.29.1: every published version of mlx-swift-examples caps
+        // swift-transformers at `<1.1.0`. 2.29.x is the line that accepts 1.0.x.
+        // Until mlx-swift-examples bumps its own swift-transformers floor, this
+        // range must stay narrow — any version that only accepts 0.1.x will
+        // deadlock against AIKitCoreML's `Hub` / `Tokenizers` product refs.
+        .package(url: "https://github.com/ml-explore/mlx-swift-examples", "2.29.1"..<"2.29.2"),
+        // Pinned to 1.0.x: mlx-swift-examples caps at `<1.1.0` (see above) and
+        // the 1.0.x line already exposes `Hub` / `Tokenizers` as independent
+        // library products, so AIKitCoreML's `.product(name: "Tokenizers"…)`
+        // target deps resolve. Revisit when mlx-swift-examples supports 1.1.x.
+        .package(url: "https://github.com/huggingface/swift-transformers", "1.0.0"..<"1.1.0"),
         // Pinned: llama.cpp removed Package.swift from master on 2025-03-05 (PR #11996).
         // 5bbe6a9f is the last commit that shipped a root Package.swift exporting the `llama` product.
         .package(url: "https://github.com/ggml-org/llama.cpp", revision: "5bbe6a9fe9a8796a9389c85accec89dbc4d91e39"),
         .package(url: "https://github.com/john-rocky/coreml-llm", from: "0.9.0"),
-        .package(url: "https://github.com/argmaxinc/WhisperKit", from: "0.15.0")
+        // Pinned to 0.14.x: WhisperKit >= 0.15 requires swift-transformers 1.1.x,
+        // which conflicts with mlx-swift-examples' 1.0.x cap. Regressed from the
+        // Round 5 unpin; the long-term fix is to split AIKitWhisperKit into a
+        // satellite package so the two graphs can diverge on swift-transformers.
+        .package(url: "https://github.com/argmaxinc/WhisperKit", "0.14.1"..<"0.15.0")
     ],
     targets: [
         .target(
