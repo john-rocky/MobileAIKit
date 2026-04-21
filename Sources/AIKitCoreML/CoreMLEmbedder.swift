@@ -1,6 +1,7 @@
 import Foundation
 import AIKit
 import CoreML
+import Compression
 import Tokenizers
 import Hub
 
@@ -215,6 +216,220 @@ public final class CoreMLEmbedder: Embedder, @unchecked Sendable {
         }
         return out
     }
+
+    // MARK: - Download
+
+    /// Resumable download of a zipped `.mlpackage` / `.mlmodelc` into the app's Caches
+    /// directory, unpacked and returned ready for ``Configuration``.
+    ///
+    /// The library deliberately **does not bundle** any CoreML weights — sentence encoders
+    /// run ~80–400 MB and not every consumer needs them. Call this once at first launch
+    /// (or from `AIModelDownloadView`) and cache the returned `URL`.
+    ///
+    /// - Parameters:
+    ///   - remoteURL: HTTPS URL to a `.zip` containing a top-level `.mlpackage` or `.mlmodelc`.
+    ///   - cacheKey: Stable folder name under `Caches/CoreMLEmbedder/` — reuse the same key
+    ///     to make the call idempotent.
+    ///   - expectedBytes: Optional known archive size so the progress bar is accurate before
+    ///     the first `Content-Length` arrives.
+    ///   - progress: `0.0 … 1.0` download fraction.
+    /// - Returns: The local `.mlpackage` / `.mlmodelc` URL you pass to ``Configuration``.
+    public static func downloadZippedModel(
+        from remoteURL: URL,
+        cacheKey: String,
+        expectedBytes: Int64? = nil,
+        progress: (@Sendable (Double) -> Void)? = nil
+    ) async throws -> URL {
+        let fm = FileManager.default
+        let caches = try fm.url(
+            for: .cachesDirectory, in: .userDomainMask,
+            appropriateFor: nil, create: true
+        )
+        let root = caches.appendingPathComponent("CoreMLEmbedder", isDirectory: true)
+            .appendingPathComponent(cacheKey, isDirectory: true)
+        try fm.createDirectory(at: root, withIntermediateDirectories: true)
+
+        if let existing = findModelBundle(in: root) {
+            progress?(1.0)
+            return existing
+        }
+
+        let tmpZip = root.appendingPathComponent("__download.zip")
+        try await downloadWithProgress(
+            from: remoteURL, to: tmpZip,
+            expectedBytes: expectedBytes, progress: progress
+        )
+        try unzip(tmpZip, into: root)
+        try? fm.removeItem(at: tmpZip)
+
+        guard let bundle = findModelBundle(in: root) else {
+            throw AIError.downloadFailed("Archive did not contain a .mlpackage / .mlmodelc")
+        }
+        return bundle
+    }
+
+    private static func findModelBundle(in dir: URL) -> URL? {
+        let fm = FileManager.default
+        guard let entries = try? fm.contentsOfDirectory(
+            at: dir, includingPropertiesForKeys: nil, options: [.skipsHiddenFiles]
+        ) else { return nil }
+        // Prefer compiled .mlmodelc; fall back to .mlpackage.
+        if let mlc = entries.first(where: { $0.pathExtension == "mlmodelc" }) { return mlc }
+        if let pkg = entries.first(where: { $0.pathExtension == "mlpackage" }) { return pkg }
+        // Some archives wrap the bundle in an extra directory. Look one level deeper.
+        for sub in entries where (try? sub.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true {
+            if let inner = findModelBundle(in: sub) { return inner }
+        }
+        return nil
+    }
+
+    private static func downloadWithProgress(
+        from url: URL,
+        to dest: URL,
+        expectedBytes: Int64?,
+        progress: (@Sendable (Double) -> Void)?
+    ) async throws {
+        let partURL = dest.appendingPathExtension("part")
+        var request = URLRequest(url: url)
+        let existingSize: Int64 = (try? FileManager.default.attributesOfItem(
+            atPath: partURL.path
+        )[.size] as? NSNumber)?.int64Value ?? 0
+        if existingSize > 0 {
+            request.setValue("bytes=\(existingSize)-", forHTTPHeaderField: "Range")
+        }
+        let (bytes, response) = try await URLSession.shared.bytes(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw AIError.downloadFailed("HTTP \(String(describing: response))")
+        }
+        let total = (http.expectedContentLength > 0 ? http.expectedContentLength : 0)
+            + existingSize
+        let totalForProgress = max(total, expectedBytes ?? 0)
+
+        if !FileManager.default.fileExists(atPath: partURL.path) {
+            FileManager.default.createFile(atPath: partURL.path, contents: nil)
+        }
+        let handle = try FileHandle(forWritingTo: partURL)
+        try handle.seek(toOffset: UInt64(existingSize))
+        defer { try? handle.close() }
+
+        var buffer = Data(); buffer.reserveCapacity(1 << 20)
+        var written: Int64 = existingSize
+        for try await byte in bytes {
+            try Task.checkCancellation()
+            buffer.append(byte)
+            if buffer.count >= (1 << 20) {
+                try handle.write(contentsOf: buffer)
+                written += Int64(buffer.count)
+                buffer.removeAll(keepingCapacity: true)
+                if totalForProgress > 0 {
+                    progress?(min(1.0, Double(written) / Double(totalForProgress)))
+                }
+            }
+        }
+        if !buffer.isEmpty {
+            try handle.write(contentsOf: buffer)
+            written += Int64(buffer.count)
+            if totalForProgress > 0 {
+                progress?(min(1.0, Double(written) / Double(totalForProgress)))
+            }
+        }
+        try handle.close()
+        if FileManager.default.fileExists(atPath: dest.path) {
+            try FileManager.default.removeItem(at: dest)
+        }
+        try FileManager.default.moveItem(at: partURL, to: dest)
+        progress?(1.0)
+    }
+
+    private static func unzip(_ archive: URL, into dir: URL) throws {
+        #if targetEnvironment(simulator) || os(macOS)
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: "/usr/bin/ditto")
+        proc.arguments = ["-xk", archive.path, dir.path]
+        proc.standardOutput = FileHandle.nullDevice
+        proc.standardError = FileHandle.nullDevice
+        try proc.run()
+        proc.waitUntilExit()
+        guard proc.terminationStatus == 0 else {
+            throw AIError.downloadFailed("ditto exited \(proc.terminationStatus)")
+        }
+        #else
+        try extractZipNative(from: archive, into: dir)
+        #endif
+    }
+
+    #if !(targetEnvironment(simulator) || os(macOS))
+    /// Minimal STORED/DEFLATE zip extractor for iOS/visionOS/tvOS where `/usr/bin/ditto`
+    /// isn't available. Tested against the standard `zip -r` layout HF uses.
+    private static func extractZipNative(from zipURL: URL, into destDir: URL) throws {
+        let data = try Data(contentsOf: zipURL)
+        guard data.count > 22 else {
+            throw AIError.downloadFailed("Zip too small")
+        }
+        var eocd = data.count - 22
+        while eocd >= 0 {
+            if data[eocd] == 0x50, data[eocd+1] == 0x4B, data[eocd+2] == 0x05, data[eocd+3] == 0x06 { break }
+            eocd -= 1
+        }
+        guard eocd >= 0 else { throw AIError.downloadFailed("No EOCD in zip") }
+        let cdOffset = Int(data[(eocd+16)..<(eocd+20)].withUnsafeBytes { $0.load(as: UInt32.self) })
+        let cdCount = Int(data[(eocd+10)..<(eocd+12)].withUnsafeBytes { $0.load(as: UInt16.self) })
+        var pos = cdOffset
+        let fm = FileManager.default
+        for _ in 0..<cdCount {
+            guard pos + 46 <= data.count,
+                  data[pos] == 0x50, data[pos+1] == 0x4B,
+                  data[pos+2] == 0x01, data[pos+3] == 0x02 else { break }
+            let compMethod = data[(pos+10)..<(pos+12)].withUnsafeBytes { $0.load(as: UInt16.self) }
+            let compSize = Int(data[(pos+20)..<(pos+24)].withUnsafeBytes { $0.load(as: UInt32.self) })
+            let uncompSize = Int(data[(pos+24)..<(pos+28)].withUnsafeBytes { $0.load(as: UInt32.self) })
+            let nameLen = Int(data[(pos+28)..<(pos+30)].withUnsafeBytes { $0.load(as: UInt16.self) })
+            let extraLen = Int(data[(pos+30)..<(pos+32)].withUnsafeBytes { $0.load(as: UInt16.self) })
+            let commentLen = Int(data[(pos+32)..<(pos+34)].withUnsafeBytes { $0.load(as: UInt16.self) })
+            let localOffset = Int(data[(pos+42)..<(pos+46)].withUnsafeBytes { $0.load(as: UInt32.self) })
+            let name = String(data: data[(pos+46)..<(pos+46+nameLen)], encoding: .utf8) ?? ""
+            let destPath = destDir.appendingPathComponent(name)
+            if name.hasSuffix("/") {
+                try fm.createDirectory(at: destPath, withIntermediateDirectories: true)
+            } else {
+                try fm.createDirectory(
+                    at: destPath.deletingLastPathComponent(),
+                    withIntermediateDirectories: true
+                )
+                let lnl = Int(data[(localOffset+26)..<(localOffset+28)].withUnsafeBytes { $0.load(as: UInt16.self) })
+                let lel = Int(data[(localOffset+28)..<(localOffset+30)].withUnsafeBytes { $0.load(as: UInt16.self) })
+                let ds = localOffset + 30 + lnl + lel
+                let payload = data[ds..<(ds + compSize)]
+                if compMethod == 0 {
+                    try Data(payload).write(to: destPath)
+                } else if compMethod == 8 {
+                    let inflated = try inflate(payload, expectedSize: uncompSize)
+                    try inflated.write(to: destPath)
+                } else {
+                    throw AIError.downloadFailed("Unsupported zip compression \(compMethod)")
+                }
+            }
+            pos += 46 + nameLen + extraLen + commentLen
+        }
+    }
+
+    private static func inflate(_ data: Data, expectedSize: Int) throws -> Data {
+        var output = Data(count: max(expectedSize, 1))
+        let written = output.withUnsafeMutableBytes { (outRaw: UnsafeMutableRawBufferPointer) -> Int in
+            data.withUnsafeBytes { (inRaw: UnsafeRawBufferPointer) -> Int in
+                guard let inBase = inRaw.baseAddress, let outBase = outRaw.baseAddress else { return 0 }
+                return compression_decode_buffer(
+                    outBase.assumingMemoryBound(to: UInt8.self), expectedSize,
+                    inBase.assumingMemoryBound(to: UInt8.self), data.count,
+                    nil, COMPRESSION_ZLIB
+                )
+            }
+        }
+        if written == 0 { throw AIError.downloadFailed("zlib inflate failed") }
+        output.removeSubrange(written..<output.count)
+        return output
+    }
+    #endif
 
     // MARK: - Core inference
 

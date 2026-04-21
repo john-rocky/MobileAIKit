@@ -174,16 +174,22 @@ print(answer.answer)
 print(answer.citations.map(\.source))
 ```
 
-Swap in a real sentence-transformer once accuracy matters. `AIKitCoreML` ships a CoreML-backed embedder with presets for `all-MiniLM-L6-v2`, `all-mpnet-base-v2`, `multilingual-e5-small`, and `bge-small-en-v1.5`:
+Swap in a real sentence-transformer once accuracy matters. `AIKitCoreML` ships the `CoreMLEmbedder` wrapper (presets for `all-MiniLM-L6-v2`, `all-mpnet-base-v2`, `multilingual-e5-small`, `bge-small-en-v1.5`) — **no weights are bundled with the library**. Download the `.mlpackage`/`.mlmodelc` zip once at first launch and cache the returned URL:
 
 ```swift
 import AIKitCoreML
 
-let embedder = CoreMLEmbedder(configuration:
-    .miniLM_L6_v2(modelURL: Bundle.main.url(forResource: "MiniLM", withExtension: "mlmodelc")!)
-)
+let modelURL = try await CoreMLEmbedder.downloadZippedModel(
+    from: URL(string: "https://huggingface.co/<you>/MiniLM-L6-v2-coreml/resolve/main/MiniLM.mlpackage.zip")!,
+    cacheKey: "minilm-l6-v2",
+    expectedBytes: 90_000_000
+) { fraction in print("download \(Int(fraction * 100))%") }
+
+let embedder = CoreMLEmbedder(configuration: .miniLM_L6_v2(modelURL: modelURL))
 let rag = RAGPipeline(embedder: embedder)
 ```
+
+Already-bundled option (for apps that want zero first-launch download): pass any local `.mlmodelc` URL — e.g. `Bundle.main.url(forResource: "MiniLM", withExtension: "mlmodelc")` — straight into the preset.
 
 ## Structured output (Codable)
 
