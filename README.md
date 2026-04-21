@@ -174,6 +174,17 @@ print(answer.answer)
 print(answer.citations.map(\.source))
 ```
 
+Swap in a real sentence-transformer once accuracy matters. `AIKitCoreML` ships a CoreML-backed embedder with presets for `all-MiniLM-L6-v2`, `all-mpnet-base-v2`, `multilingual-e5-small`, and `bge-small-en-v1.5`:
+
+```swift
+import AIKitCoreML
+
+let embedder = CoreMLEmbedder(configuration:
+    .miniLM_L6_v2(modelURL: Bundle.main.url(forResource: "MiniLM", withExtension: "mlmodelc")!)
+)
+let rag = RAGPipeline(embedder: embedder)
+```
+
 ## Structured output (Codable)
 
 ```swift
