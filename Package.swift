@@ -19,6 +19,7 @@ let package = Package(
         .library(name: "AIKitCoreMLLLM", targets: ["AIKitCoreMLLLM"]),
         .library(name: "AIKitVision", targets: ["AIKitVision"]),
         .library(name: "AIKitSpeech", targets: ["AIKitSpeech"]),
+        .library(name: "AIKitWhisperKit", targets: ["AIKitWhisperKit"]),
         .library(name: "AIKitUI", targets: ["AIKitUI"]),
         .library(name: "AIKitIntegration", targets: ["AIKitIntegration"]),
         .library(name: "AIKitAll", targets: [
@@ -30,6 +31,7 @@ let package = Package(
             "AIKitCoreMLLLM",
             "AIKitVision",
             "AIKitSpeech",
+            "AIKitWhisperKit",
             "AIKitUI",
             "AIKitIntegration"
         ])
@@ -39,7 +41,8 @@ let package = Package(
         .package(url: "https://github.com/ml-explore/mlx-swift-examples", from: "2.21.0"),
         .package(url: "https://github.com/huggingface/swift-transformers", from: "0.1.17"),
         .package(url: "https://github.com/ggml-org/llama.cpp", branch: "master"),
-        .package(url: "https://github.com/john-rocky/coreml-llm", branch: "main")
+        .package(url: "https://github.com/john-rocky/coreml-llm", branch: "main"),
+        .package(url: "https://github.com/argmaxinc/WhisperKit", from: "0.18.0")
     ],
     targets: [
         .target(
@@ -99,6 +102,14 @@ let package = Package(
             name: "AIKitSpeech",
             dependencies: ["AIKit"],
             path: "Sources/AIKitSpeech"
+        ),
+        .target(
+            name: "AIKitWhisperKit",
+            dependencies: [
+                "AIKit",
+                .product(name: "WhisperKit", package: "WhisperKit")
+            ],
+            path: "Sources/AIKitWhisperKit"
         ),
         .target(
             name: "AIKitUI",

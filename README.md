@@ -23,7 +23,8 @@ Choose the products you need:
 | `AIKitLlamaCpp` | llama.cpp GGUF backend |
 | `AIKitCoreML` | Generic CoreML LLM + classifier backends |
 | `AIKitVision` | OCR, image analysis, VisionKit DataScanner |
-| `AIKitSpeech` | STT (SFSpeechRecognizer), TTS (AVSpeechSynthesizer) |
+| `AIKitSpeech` | STT (SFSpeechRecognizer), TTS (AVSpeechSynthesizer, Premium/Personal voices) |
+| `AIKitWhisperKit` | High-accuracy STT via [WhisperKit](https://github.com/argmaxinc/WhisperKit) (on-device Whisper) |
 | `AIKitUI` | Chat, RAG, voice, camera, benchmark, memory inspector prefabs |
 | `AIKitIntegration` | EventKit, Contacts, Photos, PDFKit, Maps, HealthKit, Motion, Web, Notifications |
 | `AIKitAll` | Everything above |
@@ -66,6 +67,12 @@ let answer = try await AIKit.askPDF("When does SLA reset?", pdfURL: url, backend
 // Voice
 let transcript = try await AIKit.transcribe(audio: audio)
 await AIKit.speak("こんにちは", locale: Locale(identifier: "ja"))
+
+// High-accuracy Whisper (on-device, via WhisperKit)
+let text = try await AIKit.transcribeWithWhisper(audio: audio, language: "ja")
+
+// High-quality read-aloud (picks Premium/Enhanced voice when installed)
+await AIKit.speakHQ("こんにちは、今日はいい天気ですね。", locale: Locale(identifier: "ja-JP"))
 ```
 
 ## Holding a model instance (important)
@@ -150,6 +157,46 @@ let contact: Contact = try await AIKit.extract(
 ```swift
 let assistant = try VoiceAssistant(backend: backend, locale: Locale(identifier: "ja-JP"))
 AIVoiceAssistantView(assistant: assistant)
+```
+
+### High-accuracy voice stack (Whisper + Premium TTS)
+
+```swift
+import AIKitSpeech
+import AIKitWhisperKit
+
+// On-device Whisper (CoreML) — much higher accuracy than SFSpeechRecognizer,
+// especially for noisy audio or non-English speech.
+let whisper = WhisperSpeechToText(config: .init(
+    model: "large-v3-v20240930_626MB",   // or nil to auto-pick
+    language: "ja"                        // nil to auto-detect
+))
+try await whisper.preload()
+
+// Premium read-aloud — picks the best installed voice for the locale.
+// Ask users to install Enhanced/Premium voices under
+// Settings → Accessibility → Spoken Content → Voices.
+let tts = TextToSpeech(
+    locale: Locale(identifier: "ja-JP"),
+    quality: .best            // or .premium / .enhanced / .personal
+)
+
+let assistant = VoiceAssistant(
+    backend: backend,
+    whisper: .init(language: "ja"),
+    speaker: tts,
+    systemPrompt: "You are a concise spoken assistant."
+)
+```
+
+One-liner file transcription with Whisper:
+
+```swift
+let text = try await AIKit.transcribeWithWhisper(audio: audio, language: "ja")
+
+// Or with segment timestamps:
+let detailed = try await AIKit.transcribeWithWhisperDetailed(audio: audio, wordTimestamps: true)
+for seg in detailed.segments { print(seg.start, seg.end, seg.text) }
 ```
 
 ## Tool calling
