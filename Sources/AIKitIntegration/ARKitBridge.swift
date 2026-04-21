@@ -3,9 +3,13 @@ import AIKit
 #if canImport(ARKit) && os(iOS)
 import ARKit
 
-@MainActor
+// Not @MainActor: ARSession invokes its delegate on an internal queue,
+// so the delegate method must be callable off the main actor. Internal
+// state is guarded by a lock so `frames()` (any caller) and the ARKit
+// callback thread can safely read/write the continuation.
 public final class ARKitBridge: NSObject, @unchecked Sendable, ARSessionDelegate {
     public let session = ARSession()
+    private let lock = NSLock()
     private var frameContinuation: AsyncStream<ARFrame>.Continuation?
 
     public override init() {
@@ -35,15 +39,16 @@ public final class ARKitBridge: NSObject, @unchecked Sendable, ARSessionDelegate
     /// Live-frame stream for continuous ML pipelines.
     public func frames() -> AsyncStream<ARFrame> {
         AsyncStream { continuation in
-            frameContinuation = continuation
+            lock.withLock { frameContinuation = continuation }
             continuation.onTermination = { [weak self] _ in
-                self?.frameContinuation = nil
+                self?.lock.withLock { self?.frameContinuation = nil }
             }
         }
     }
 
     public func session(_ session: ARSession, didUpdate frame: ARFrame) {
-        frameContinuation?.yield(frame)
+        let cont = lock.withLock { frameContinuation }
+        cont?.yield(frame)
     }
 }
 #endif
