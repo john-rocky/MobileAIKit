@@ -68,6 +68,47 @@ let transcript = try await AIKit.transcribe(audio: audio)
 await AIKit.speak("こんにちは", locale: Locale(identifier: "ja"))
 ```
 
+## Holding a model instance (important)
+
+Every backend is a reference type. Create **one** and reuse it — don't instantiate inside hot paths:
+
+```swift
+// ❌ Creates + loads the model on every call (slow)
+try await AIKit.chat("hi", backend: CoreMLLLMBackend(model: .gemma4e2b))
+
+// ✅ Own it once
+let backend = CoreMLLLMBackend(model: .gemma4e2b)
+try await backend.load()           // optional: eager warm-up
+try await AIKit.chat("hi", backend: backend)
+try await AIKit.chat("again", backend: backend)
+```
+
+For SwiftUI, use the `AIBackendHost` wrapper — one instance for the whole app, injected through the environment:
+
+```swift
+@main struct MyApp: App {
+    @State private var host = AIBackendHost { CoreMLLLMBackend(model: .gemma4e2b) }
+    var body: some Scene {
+        WindowGroup {
+            RootView().aiBackendHost(host)     // loads once, keeps it alive
+        }
+    }
+}
+
+struct RootView: View {
+    @Environment(AIBackendHost.self) private var host
+    var body: some View {
+        if let backend = host.backend {
+            AIChatView(session: ChatSession(backend: backend))
+        } else if host.isLoading {
+            ProgressView()
+        }
+    }
+}
+```
+
+Call `host.unload()` on memory warnings, `host.reload()` to swap models.
+
 ## 3-line Chat UI
 
 ```swift
