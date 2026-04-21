@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleDevelopmentRegion</key>
+    <string>en</string>
+    <key>CFBundleExecutable</key>
+    <string>$(EXECUTABLE_NAME)</string>
+    <key>CFBundleIdentifier</key>
+    <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+    <key>CFBundleInfoDictionaryVersion</key>
+    <string>6.0</string>
+    <key>CFBundleName</key>
+    <string>AgentPlayground</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleVersion</key>
+    <string>1</string>
+    <key>LSRequiresIPhoneOS</key>
+    <true/>
+    <key>NSCameraUsageDescription</key>
+    <string>The agent may open the camera to capture photos you ask about.</string>
+    <key>NSPhotoLibraryUsageDescription</key>
+    <string>The agent may pick photos from your library when you ask.</string>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>The agent listens to spoken prompts when voice input is used.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>Transcribes your voice prompts on-device for the agent.</string>
+    <key>NSContactsUsageDescription</key>
+    <string>Lets the agent look up contacts when you ask.</string>
+    <key>NSCalendarsFullAccessUsageDescription</key>
+    <string>Lets the agent read and create calendar events when you ask.</string>
+    <key>NSRemindersFullAccessUsageDescription</key>
+    <string>Lets the agent add reminders when you ask.</string>
+    <key>NSLocationWhenInUseUsageDescription</key>
+    <string>Lets the agent use your current location for weather, maps, and place lookups.</string>
+    <key>NSMotionUsageDescription</key>
+    <string>Lets the agent summarise motion activity when you ask.</string>
+    <key>NSHealthShareUsageDescription</key>
+    <string>Lets the agent read HealthKit metrics like step count.</string>
+    <key>NSHealthUpdateUsageDescription</key>
+    <string>Lets the agent log entries to Apple Health when you ask.</string>
+    <key>NSAppleMusicUsageDescription</key>
+    <string>Lets the agent search and play songs when you ask.</string>
+    <key>NSUserNotificationsUsageDescription</key>
+    <string>Lets the agent schedule local reminders when you ask.</string>
+    <key>NSHomeKitUsageDescription</key>
+    <string>Lets the agent control HomeKit accessories when you ask.</string>
+    <key>UILaunchScreen</key>
+    <dict/>
+    <key>UIApplicationSceneManifest</key>
+    <dict>
+        <key>UIApplicationSupportsMultipleScenes</key>
+        <true/>
+    </dict>
+    <key>UISupportedInterfaceOrientations</key>
+    <array>
+        <string>UIInterfaceOrientationPortrait</string>
+        <string>UIInterfaceOrientationLandscapeLeft</string>
+        <string>UIInterfaceOrientationLandscapeRight</string>
+    </array>
+</dict>
+</plist>

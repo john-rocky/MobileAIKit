@@ -1,6 +1,6 @@
 # LocalAIKit — Sample Apps
 
-All five samples are fully-runnable iOS SwiftUI apps that use `CoreMLLLMBackend(model: .gemma4e2b)` on-device. Every sample uses **on-device voice readback** (`TextToSpeech.speakUtterance`) so results are heard, not just seen.
+All samples are fully-runnable iOS SwiftUI apps that use `CoreMLLLMBackend(model: .gemma4e2b)` on-device. Every sample uses **on-device voice readback** (`TextToSpeech.speakUtterance`) so results are heard, not just seen.
 
 Generate any one with:
 
@@ -12,6 +12,7 @@ xcodegen && open <Sample>.xcodeproj
 
 | Sample | One-liner | Core pieces exercised |
 |---|---|---|
+| [`AgentPlayground`](./AgentPlayground) | One-screen agent wired up with every built-in tool pack plus custom app tools — tap a chip and watch it call the right function | `AIAgentView`, `AgentKit.build`, host/integration/vision/speech tool packs, custom `TypedTool`s |
 | [`MobileAIKitDemo`](./MobileAIKitDemo) | Swiss-army demo of every LocalAIKit feature | `AIChatView`, `AIDocumentQAView`, `AIVoiceAssistantView`, `AICameraAssistantView`, `AIBenchmarkView`, web-search agent |
 | [`Moments`](./Moments) | Multimodal life journal: photo + voice → structured card stored in SQLite, searchable | `CoreMLLLMBackend`, `ImageAttachment`, `JSONSchema` + `StructuredDecoder`, `DatabaseMemoryStore`, `SpeechToText`, `TextToSpeech`, `LocationBridge` |
 | [`VoiceInterpreter`](./VoiceInterpreter) | Two-way live interpreter — tap A or B, speak, hear the translation | `SpeechToText.liveRecognition`, `AIKit.translate`, `TextToSpeech.speakUtterance` (target locale) |
@@ -21,7 +22,7 @@ xcodegen && open <Sample>.xcodeproj
 
 ## What to change
 
-All five samples default to `CoreMLLLMBackend(model: .gemma4e2b)`. To swap the runtime, edit the `bootstrap`/`boot` method in the sample's `App.swift`:
+All samples default to `CoreMLLLMBackend(model: .gemma4e2b)`. To swap the runtime, edit the `bootstrap`/`boot` method in the sample's `App.swift`:
 
 ```swift
 // Fallback to llama.cpp GGUF
