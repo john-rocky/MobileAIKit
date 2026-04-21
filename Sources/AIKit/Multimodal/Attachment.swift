@@ -58,6 +58,33 @@ public struct ImageAttachment: Sendable, Hashable, Codable {
         self.caption = caption
     }
 
+    /// Wrap already-encoded JPEG bytes (camera output, picker transferable).
+    public init(jpeg data: Data, caption: String? = nil) {
+        self.init(source: .data(data), mimeType: "image/jpeg", caption: caption)
+    }
+
+    /// Wrap already-encoded PNG bytes.
+    public init(png data: Data, caption: String? = nil) {
+        self.init(source: .data(data), mimeType: "image/png", caption: caption)
+    }
+
+    /// Wrap a local file on disk (e.g. a freshly-written photo).
+    public init(fileURL url: URL, mimeType: String? = nil, caption: String? = nil) {
+        let mime = mimeType ?? Self.mimeType(forPathExtension: url.pathExtension) ?? "image/jpeg"
+        self.init(source: .fileURL(url), mimeType: mime, caption: caption)
+    }
+
+    private static func mimeType(forPathExtension ext: String) -> String? {
+        switch ext.lowercased() {
+        case "jpg", "jpeg": return "image/jpeg"
+        case "png": return "image/png"
+        case "heic": return "image/heic"
+        case "webp": return "image/webp"
+        case "gif": return "image/gif"
+        default: return nil
+        }
+    }
+
     #if canImport(UIKit)
     public init(_ uiImage: UIImage, compressionQuality: CGFloat = 0.9, caption: String? = nil) {
         let data = uiImage.jpegData(compressionQuality: compressionQuality)

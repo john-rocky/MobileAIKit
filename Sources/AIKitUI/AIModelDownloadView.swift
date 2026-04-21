@@ -25,17 +25,39 @@ public struct AIModelDownloadView: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(descriptor.displayName).font(.title2).bold()
-            Text(descriptor.version).font(.caption).foregroundStyle(.secondary)
-
-            if let progress {
-                ProgressView(value: progress.fraction) {
-                    Text("\(progress.file)")
-                        .font(.footnote)
-                        .monospaced()
+            HStack(spacing: 6) {
+                Text(descriptor.version)
+                if let size = expectedSizeLabel {
+                    Text("·").foregroundStyle(.tertiary)
+                    Label(size, systemImage: "externaldrive")
                 }
-                Text("\(formatBytes(progress.overallBytesDownloaded)) / \(formatBytes(progress.overallTotalBytes))")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                if descriptor.modality == .vision {
+                    Text("·").foregroundStyle(.tertiary)
+                    Label("Vision model", systemImage: "eye")
+                }
+            }
+            .font(.caption)
+            .foregroundStyle(.secondary)
+
+            if isDownloading || progress != nil {
+                if let progress {
+                    ProgressView(value: progress.fraction) {
+                        Text("\(progress.file)")
+                            .font(.footnote)
+                            .monospaced()
+                    }
+                    Text("\(formatBytes(progress.overallBytesDownloaded)) / \(formatBytes(progress.overallTotalBytes))")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+            } else if ready == nil, let size = expectedSizeLabel {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Downloads \(size) over Wi-Fi", systemImage: "wifi")
+                        .font(.footnote)
+                    Label("First-run warm-up may take 10–30 s on ANE", systemImage: "clock")
+                        .font(.footnote)
+                }
+                .foregroundStyle(.secondary)
             }
 
             if let error {
@@ -44,7 +66,7 @@ public struct AIModelDownloadView: View {
 
             HStack {
                 if ready == nil {
-                    Button(isDownloading ? "Downloading…" : "Download") {
+                    Button(isDownloading ? "Downloading…" : downloadLabel) {
                         Task { await start() }
                     }
                     .disabled(isDownloading)
@@ -57,6 +79,20 @@ public struct AIModelDownloadView: View {
             }
         }
         .padding()
+    }
+
+    private var expectedTotalBytes: Int64 {
+        descriptor.files.reduce(0) { $0 + ($1.expectedBytes ?? 0) }
+    }
+
+    private var expectedSizeLabel: String? {
+        let total = expectedTotalBytes
+        return total > 0 ? formatBytes(total) : nil
+    }
+
+    private var downloadLabel: String {
+        if let size = expectedSizeLabel { return "Download (\(size))" }
+        return "Download"
     }
 
     private func start() async {

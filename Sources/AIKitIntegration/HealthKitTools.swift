@@ -18,6 +18,17 @@ public final class HealthKitBridge: @unchecked Sendable {
         }
     }
 
+    public func requestAuthorization(
+        share: Set<HKSampleType> = [],
+        read: Set<HKObjectType> = []
+    ) async throws -> Bool {
+        try await withCheckedThrowingContinuation { cont in
+            store.requestAuthorization(toShare: share, read: read) { success, error in
+                if let error { cont.resume(throwing: error) } else { cont.resume(returning: success) }
+            }
+        }
+    }
+
     public func recentStepCountTool() -> any Tool {
         let spec = ToolSpec(
             name: "health_step_count",
@@ -50,6 +61,130 @@ public final class HealthKitBridge: @unchecked Sendable {
                 store.execute(query)
             }
             return Out(totalSteps: total, dailyAverage: total / Double(args.days))
+        }
+    }
+
+    // MARK: - Nutrition write API
+
+    /// Quantity types that describe a meal entry (dietary energy + macros + water).
+    /// Use as the `share` set in ``requestAuthorization(share:read:)``.
+    public static var nutritionWriteTypes: Set<HKSampleType> {
+        let ids: [HKQuantityTypeIdentifier] = [
+            .dietaryEnergyConsumed,
+            .dietaryProtein,
+            .dietaryCarbohydrates,
+            .dietaryFatTotal,
+            .dietaryFiber,
+            .dietarySugar,
+            .dietaryWater
+        ]
+        return Set(ids.compactMap { HKQuantityType.quantityType(forIdentifier: $0) })
+    }
+
+    /// Request write authorization for the full nutrition bundle (calories + macros + water).
+    @discardableResult
+    public func requestNutritionAuthorization() async throws -> Bool {
+        try await requestAuthorization(share: Self.nutritionWriteTypes)
+    }
+
+    /// Write a nutrition entry to HealthKit. Missing macros are skipped, not zero-written.
+    /// - Returns: The `UUID`s of the samples saved (one per present field).
+    @discardableResult
+    public func saveMeal(_ meal: NutritionEntry, date: Date = Date()) async throws -> [UUID] {
+        guard HKHealthStore.isHealthDataAvailable() else {
+            throw AIError.resourceUnavailable("HealthKit not available on this device")
+        }
+        let metadata: [String: Any] = {
+            var m: [String: Any] = [HKMetadataKeyWasUserEntered: true]
+            if let name = meal.name { m[HKMetadataKeyFoodType] = name }
+            return m
+        }()
+
+        var samples: [HKQuantitySample] = []
+        func add(_ identifier: HKQuantityTypeIdentifier, _ value: Double?, _ unit: HKUnit) {
+            guard let value, value > 0,
+                  let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return }
+            let quantity = HKQuantity(unit: unit, doubleValue: value)
+            samples.append(HKQuantitySample(
+                type: type, quantity: quantity,
+                start: date, end: date, metadata: metadata
+            ))
+        }
+
+        add(.dietaryEnergyConsumed, meal.calories, .kilocalorie())
+        add(.dietaryProtein, meal.proteinGrams, .gram())
+        add(.dietaryCarbohydrates, meal.carbohydrateGrams, .gram())
+        add(.dietaryFatTotal, meal.fatGrams, .gram())
+        add(.dietaryFiber, meal.fiberGrams, .gram())
+        add(.dietarySugar, meal.sugarGrams, .gram())
+        if let mL = meal.waterMilliliters, mL > 0,
+           let type = HKQuantityType.quantityType(forIdentifier: .dietaryWater) {
+            let q = HKQuantity(unit: .literUnit(with: .milli), doubleValue: mL)
+            samples.append(HKQuantitySample(
+                type: type, quantity: q,
+                start: date, end: date, metadata: metadata
+            ))
+        }
+
+        guard !samples.isEmpty else { return [] }
+        try await store.save(samples)
+        return samples.map(\.uuid)
+    }
+
+    /// Sum calories + macros over a single day (local calendar).
+    public func dailyTotals(
+        on day: Date = Date(),
+        calendar: Calendar = .current
+    ) async throws -> NutritionEntry {
+        let start = calendar.startOfDay(for: day)
+        let end = calendar.date(byAdding: .day, value: 1, to: start) ?? start
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end)
+
+        func sum(_ id: HKQuantityTypeIdentifier, unit: HKUnit) async -> Double? {
+            guard let type = HKQuantityType.quantityType(forIdentifier: id) else { return nil }
+            return await withCheckedContinuation { cont in
+                let q = HKStatisticsQuery(
+                    quantityType: type,
+                    quantitySamplePredicate: predicate,
+                    options: .cumulativeSum
+                ) { _, stats, _ in
+                    cont.resume(returning: stats?.sumQuantity()?.doubleValue(for: unit))
+                }
+                store.execute(q)
+            }
+        }
+
+        async let cal = sum(.dietaryEnergyConsumed, unit: .kilocalorie())
+        async let pro = sum(.dietaryProtein, unit: .gram())
+        async let car = sum(.dietaryCarbohydrates, unit: .gram())
+        async let fat = sum(.dietaryFatTotal, unit: .gram())
+        async let fib = sum(.dietaryFiber, unit: .gram())
+        async let sug = sum(.dietarySugar, unit: .gram())
+        async let wat = sum(.dietaryWater, unit: .literUnit(with: .milli))
+
+        return await NutritionEntry(
+            name: nil,
+            calories: cal,
+            proteinGrams: pro,
+            carbohydrateGrams: car,
+            fatGrams: fat,
+            fiberGrams: fib,
+            sugarGrams: sug,
+            waterMilliliters: wat
+        )
+    }
+
+    /// Delete samples previously saved by ``saveMeal(_:date:)`` — pass the `UUID`s it returned.
+    public func deleteSamples(ids: [UUID]) async throws {
+        guard !ids.isEmpty else { return }
+        let predicate = HKQuery.predicateForObjects(with: Set(ids))
+        let types: [HKQuantityType] = [
+            .dietaryEnergyConsumed, .dietaryProtein, .dietaryCarbohydrates,
+            .dietaryFatTotal, .dietaryFiber, .dietarySugar, .dietaryWater
+        ].compactMap { HKQuantityType.quantityType(forIdentifier: $0) }
+
+        for type in types {
+            _ = try await store.deleteObjects(of: type, predicate: predicate)
         }
     }
 }

@@ -74,6 +74,8 @@ public enum AIKit {
     ///
     /// The schema is embedded in the system prompt so the model replies with valid JSON,
     /// which is then repaired (trailing commas / fences removed) before decoding.
+    /// When the first output can't be decoded, one "fix the JSON against the schema"
+    /// retry is sent to the backend before throwing ``StructuredExtractionError``.
     public static func extract<T: Decodable & Sendable>(
         _ type: T.Type,
         from text: String,
@@ -81,16 +83,66 @@ public enum AIKit {
         instruction: String = "Extract the requested fields.",
         backend: any AIBackend
     ) async throws -> T {
-        let request = StructuredRequest(type: type, schema: schema, instruction: instruction)
+        let systemPrompt = StructuredRequest.systemPrompt(schema: schema)
         let messages: [Message] = [
-            .system(request.systemPrompt()),
+            .system(systemPrompt),
             .user("\(instruction)\n\n\(text)")
         ]
+        return try await extractWithRepair(
+            type,
+            baseMessages: messages,
+            systemPrompt: systemPrompt,
+            backend: backend
+        )
+    }
+
+    /// Internal helper: first-pass decode, one LLM-repair retry, then throw with raw text preserved.
+    static func extractWithRepair<T: Decodable & Sendable>(
+        _ type: T.Type,
+        baseMessages: [Message],
+        systemPrompt: String,
+        backend: any AIBackend
+    ) async throws -> T {
         var strict = GenerationConfig.default
         strict.temperature = 0.1
         strict.topP = 1.0
-        let result = try await backend.generate(messages: messages, tools: [], config: strict)
-        return try StructuredDecoder().decode(type, from: result.message.content)
+
+        let first = try await backend.generate(messages: baseMessages, config: strict)
+        let rawFirst = first.message.content
+        let decoder = StructuredDecoder()
+        do {
+            return try decoder.decode(type, from: rawFirst)
+        } catch let firstError {
+            let repairMessages: [Message] = baseMessages + [
+                first.message,
+                .user("""
+                Your previous reply could not be parsed as JSON against the schema in the system \
+                prompt. Re-emit exactly one valid JSON object that matches the schema. No prose, \
+                no markdown fences.
+                """)
+            ]
+            do {
+                let second = try await backend.generate(messages: repairMessages, config: strict)
+                let rawSecond = second.message.content
+                do {
+                    return try decoder.decode(type, from: rawSecond)
+                } catch let secondError {
+                    throw StructuredExtractionError(
+                        rawText: rawSecond,
+                        underlying: secondError,
+                        attempts: 2
+                    )
+                }
+            } catch let error as StructuredExtractionError {
+                throw error
+            } catch {
+                throw StructuredExtractionError(
+                    rawText: rawFirst,
+                    underlying: firstError,
+                    attempts: 1
+                )
+            }
+        }
     }
 
     /// Classifies `text` into one of `Label`'s cases. `Label.rawValue` must be `String`.

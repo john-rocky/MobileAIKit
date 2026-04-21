@@ -135,4 +135,20 @@ public extension AIBackend {
     func embed(_ text: String) async throws -> [Float] {
         throw AIError.unsupportedCapability("embeddings")
     }
+
+    /// Tool-free overload — skip the `tools: []` boilerplate when you're just chatting.
+    func generate(
+        messages: [Message],
+        config: GenerationConfig = .default
+    ) async throws -> GenerationResult {
+        try await generate(messages: messages, tools: [], config: config)
+    }
+
+    /// Tool-free overload — skip the `tools: []` boilerplate when you're just chatting.
+    func stream(
+        messages: [Message],
+        config: GenerationConfig = .default
+    ) -> AsyncThrowingStream<GenerationChunk, Error> {
+        stream(messages: messages, tools: [], config: config)
+    }
 }

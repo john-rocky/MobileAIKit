@@ -1,7 +1,7 @@
 import Foundation
 import AIKit
 import CoreML
-import CoreMLLLM
+@_exported import CoreMLLLM
 import CoreGraphics
 import ImageIO
 
@@ -49,6 +49,15 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
         self.init(source: .model(model), computeUnits: computeUnits)
     }
 
+    /// Re-exported so callers can write `CoreMLLLMBackend.ModelInfo.gemma4e2b` without importing `CoreMLLLM` directly.
+    public typealias ModelInfo = CoreMLLLM.ModelDownloader.ModelInfo
+
+    /// Models bundled with `coreml-llm`. Use this to populate pickers
+    /// without reaching into the underlying download type.
+    public static var availableModels: [ModelInfo] {
+        CoreMLLLM.ModelDownloader.ModelInfo.defaults
+    }
+
     public var isLoaded: Bool {
         get async { llm != nil }
     }
@@ -67,6 +76,59 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
             lock.lock(); self.llm = loaded; lock.unlock()
         } catch {
             throw AIError.modelLoadFailed(error.localizedDescription)
+        }
+    }
+
+    /// `load()` variant that attaches a one-shot progress handler (status strings) without
+    /// clobbering the long-lived `progressHandler` property.
+    public func load(progress: @escaping @Sendable (String) -> Void) async throws {
+        let previous = progressHandler
+        progressHandler = progress
+        defer { progressHandler = previous }
+        try await load()
+    }
+
+    /// Download the model weights without loading them into memory.
+    ///
+    /// Useful when the app wants to pre-download on Wi-Fi (e.g. during onboarding) and
+    /// defer the 10–30 s ANE warm-up of ``load()`` until the user actually needs the model.
+    /// No-op when the backend was constructed from a local directory.
+    ///
+    /// - Parameter progress: Optional closure called with `(fraction, statusText)` while the
+    ///   download runs. `fraction` is `0.0…1.0`.
+    public func download(
+        progress: (@Sendable (Double, String) -> Void)? = nil
+    ) async throws {
+        guard case .model(let info) = source else { return }
+        let downloader = CoreMLLLM.ModelDownloader.shared
+        if downloader.isDownloaded(info) { return }
+
+        let pollTask: Task<Void, Never>?
+        if let progress {
+            pollTask = Task { @MainActor in
+                while !Task.isCancelled {
+                    progress(downloader.progress, downloader.status)
+                    try? await Task.sleep(nanoseconds: 200_000_000)
+                    if downloader.isDownloaded(info) { break }
+                }
+            }
+        } else {
+            pollTask = nil
+        }
+        defer { pollTask?.cancel() }
+
+        do {
+            _ = try await downloader.download(info)
+        } catch {
+            throw AIError.downloadFailed(error.localizedDescription)
+        }
+    }
+
+    /// Whether the model's weights are present on disk (no network or memory check).
+    public var isDownloaded: Bool {
+        switch source {
+        case .directory(let url): return FileManager.default.fileExists(atPath: url.path)
+        case .model(let info): return CoreMLLLM.ModelDownloader.shared.isDownloaded(info)
         }
     }
 

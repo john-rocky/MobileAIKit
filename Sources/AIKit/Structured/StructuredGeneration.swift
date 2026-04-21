@@ -14,6 +14,14 @@ public struct StructuredRequest<T: Decodable & Sendable>: Sendable {
     }
 
     public func systemPrompt() -> String {
+        Self.systemPrompt(schema: schema, examples: examples)
+    }
+
+    /// Build the schema-anchored system prompt without constructing a `StructuredRequest`.
+    public static func systemPrompt(
+        schema: JSONSchema,
+        examples: [String] = []
+    ) -> String {
         var parts: [String] = []
         parts.append("You must return a single JSON object that conforms to this schema:")
         if let data = try? schema.jsonData(), let s = String(data: data, encoding: .utf8) {

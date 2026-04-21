@@ -188,6 +188,50 @@ let contact: Contact = try await AIKit.extract(
 )
 ```
 
+Vision-based extraction (food photo → nutrition, receipt → line items):
+
+```swift
+import AIKitIntegration   // for NutritionEntry.jsonSchema
+
+let nutrition: NutritionEntry = try await AIKit.extract(
+    NutritionEntry.self,
+    from: uiImage,                        // UIImage / NSImage / ImageAttachment / Data
+    schema: NutritionEntry.jsonSchema,
+    instruction: NutritionEntry.defaultInstruction,
+    backend: backend
+)
+
+// Sync to Apple Health in one call
+let hk = HealthKitBridge()
+try await hk.requestNutritionAuthorization()
+try await hk.saveMeal(nutrition)
+```
+
+Stream tokens live during a slow VLM extract (keeps users looking at real output instead of a spinner):
+
+```swift
+for try await event in AIKit.streamingExtract(
+    NutritionEntry.self,
+    from: ImageAttachment(jpeg: data),
+    schema: NutritionEntry.jsonSchema,
+    backend: backend
+) {
+    switch event {
+    case .delta(let s): liveText += s
+    case .value(let n): nutrition = n
+    }
+}
+```
+
+When decoding fails, ``StructuredExtractionError`` preserves the raw model output so you can surface it or log it:
+
+```swift
+} catch let e as StructuredExtractionError {
+    print(e.rawText)       // exactly what the model said
+    print(e.underlying)    // the JSON / schema error
+}
+```
+
 ## Voice assistant (2 lines)
 
 ```swift
@@ -295,7 +339,8 @@ let router = BackendRouter(backends: [
 | `AIDocumentQAView` | Chat against a RAG pipeline with citations |
 | `AISearchView` | Hybrid vector+BM25 search over a `VectorIndex` |
 | `AIVoiceAssistantView` | Mic → STT → LLM → TTS loop |
-| `AICameraAssistantView` | Snap photo → describe with vision backend |
+| `AICameraAssistantView` | PhotosPicker → describe with vision backend |
+| `AICameraCaptureView` | Live `AVCaptureSession` with shutter — 1-tap meal / scan capture |
 | `AIOCRExtractionView` | Add images → recognise text |
 | `AIFormFillView` | Paste source text → auto-fill form fields |
 | `AIStructuredResultView` | Render `Codable` output inline |

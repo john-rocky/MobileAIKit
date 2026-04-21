@@ -35,4 +35,47 @@ public extension MemoryStoreProtocol {
     func retrieveByEntity(_ entity: String, limit: Int = 8) async throws -> [MemoryRecord] {
         try await retrieveByEntity(entity, namespace: "default", limit: limit)
     }
+
+    // MARK: - Filtered retrieval
+
+    /// Retrieve the top-`limit` records that also satisfy `predicate`.
+    ///
+    /// The default implementation oversamples (4× `limit`) and post-filters. Good for
+    /// date-range or key/value filters where the pool of matches is small; overridden
+    /// by ``DatabaseMemoryStore`` for large corpora so the predicate is pushed into SQL.
+    func retrieve(
+        query: String,
+        namespace: String = "default",
+        limit: Int = 8,
+        where predicate: @Sendable (MemoryRecord) -> Bool
+    ) async throws -> [MemoryRecord] {
+        let pool = max(limit * 4, 32)
+        let candidates = try await retrieve(query: query, namespace: namespace, limit: pool)
+        return Array(candidates.filter(predicate).prefix(limit))
+    }
+
+    /// Retrieve top-`limit` records whose ``MemoryRecord/createdAt`` falls in `range`.
+    func retrieve(
+        query: String,
+        namespace: String = "default",
+        limit: Int = 8,
+        createdIn range: ClosedRange<Date>
+    ) async throws -> [MemoryRecord] {
+        try await retrieve(query: query, namespace: namespace, limit: limit) { record in
+            range.contains(record.createdAt)
+        }
+    }
+
+    /// Retrieve top-`limit` records whose ``MemoryRecord/metadata`` contains `key == value`.
+    func retrieve(
+        query: String,
+        namespace: String = "default",
+        limit: Int = 8,
+        metadata key: String,
+        equals value: String
+    ) async throws -> [MemoryRecord] {
+        try await retrieve(query: query, namespace: namespace, limit: limit) { record in
+            record.metadata[key] == value
+        }
+    }
 }
