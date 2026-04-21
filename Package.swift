@@ -19,7 +19,6 @@ let package = Package(
         .library(name: "AIKitCoreMLLLM", targets: ["AIKitCoreMLLLM"]),
         .library(name: "AIKitVision", targets: ["AIKitVision"]),
         .library(name: "AIKitSpeech", targets: ["AIKitSpeech"]),
-        .library(name: "AIKitWhisperKit", targets: ["AIKitWhisperKit"]),
         .library(name: "AIKitUI", targets: ["AIKitUI"]),
         .library(name: "AIKitIntegration", targets: ["AIKitIntegration"]),
         .library(name: "AIKitAgent", targets: ["AIKitAgent"]),
@@ -32,7 +31,6 @@ let package = Package(
             "AIKitCoreMLLLM",
             "AIKitVision",
             "AIKitSpeech",
-            "AIKitWhisperKit",
             "AIKitUI",
             "AIKitIntegration",
             "AIKitAgent"
@@ -54,12 +52,13 @@ let package = Package(
         // Pinned: llama.cpp removed Package.swift from master on 2025-03-05 (PR #11996).
         // 5bbe6a9f is the last commit that shipped a root Package.swift exporting the `llama` product.
         .package(url: "https://github.com/ggml-org/llama.cpp", revision: "5bbe6a9fe9a8796a9389c85accec89dbc4d91e39"),
-        .package(url: "https://github.com/john-rocky/coreml-llm", from: "0.9.0"),
-        // Pinned to 0.14.x: WhisperKit >= 0.15 requires swift-transformers 1.1.x,
-        // which conflicts with mlx-swift-examples' 1.0.x cap. Regressed from the
-        // Round 5 unpin; the long-term fix is to split AIKitWhisperKit into a
-        // satellite package so the two graphs can diverge on swift-transformers.
-        .package(url: "https://github.com/argmaxinc/WhisperKit", "0.14.1"..<"0.15.0")
+        .package(url: "https://github.com/john-rocky/coreml-llm", from: "0.9.0")
+        // WhisperKit intentionally not declared here. No published version is
+        // compatible with both mlx-swift-examples (caps swift-transformers at
+        // <1.1.0) and WhisperKit 0.15+ (requires 1.1.x); WhisperKit 0.14.x
+        // requires 0.1.x, which breaks AIKitCoreML's Hub / Tokenizers product
+        // references. Users who need Whisper can add WhisperKit to their own
+        // package and conform to `VoiceTranscriber` (see README).
     ],
     targets: [
         .target(
@@ -119,14 +118,6 @@ let package = Package(
             name: "AIKitSpeech",
             dependencies: ["AIKit"],
             path: "Sources/AIKitSpeech"
-        ),
-        .target(
-            name: "AIKitWhisperKit",
-            dependencies: [
-                "AIKit",
-                .product(name: "WhisperKit", package: "WhisperKit")
-            ],
-            path: "Sources/AIKitWhisperKit"
         ),
         .target(
             name: "AIKitUI",

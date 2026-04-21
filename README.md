@@ -24,7 +24,6 @@ Choose the products you need:
 | `AIKitCoreML` | Generic CoreML LLM + classifier backends |
 | `AIKitVision` | OCR, image analysis, VisionKit DataScanner |
 | `AIKitSpeech` | STT (SFSpeechRecognizer), TTS (AVSpeechSynthesizer, Premium/Personal voices) |
-| `AIKitWhisperKit` | High-accuracy STT via [WhisperKit](https://github.com/argmaxinc/WhisperKit) (on-device Whisper) |
 | `AIKitUI` | Chat, RAG, voice, camera, benchmark, memory inspector prefabs |
 | `AIKitIntegration` | EventKit, Contacts, Photos, PDFKit, Maps, HealthKit, Motion, Web, Notifications |
 | `AIKitAgent` | Drop-in AI Agent that can drive the whole app — camera, pickers, every integration, your own tools |
@@ -103,9 +102,6 @@ let answer = try await AIKit.askPDF("When does SLA reset?", pdfURL: url, backend
 // Voice
 let transcript = try await AIKit.transcribe(audio: audio)
 await AIKit.speak("こんにちは", locale: Locale(identifier: "ja"))
-
-// High-accuracy Whisper (on-device, via WhisperKit)
-let text = try await AIKit.transcribeWithWhisper(audio: audio, language: "ja")
 
 // High-quality read-aloud (picks Premium/Enhanced voice when installed)
 await AIKit.speakHQ("こんにちは、今日はいい天気ですね。", locale: Locale(identifier: "ja-JP"))
@@ -267,19 +263,10 @@ let assistant = try VoiceAssistant(backend: backend, locale: Locale(identifier: 
 AIVoiceAssistantView(assistant: assistant)
 ```
 
-### High-accuracy voice stack (Whisper + Premium TTS)
+### Premium TTS
 
 ```swift
 import AIKitSpeech
-import AIKitWhisperKit
-
-// On-device Whisper (CoreML) — much higher accuracy than SFSpeechRecognizer,
-// especially for noisy audio or non-English speech.
-let whisper = WhisperSpeechToText(config: .init(
-    model: "large-v3-v20240930_626MB",   // or nil to auto-pick
-    language: "ja"                        // nil to auto-detect
-))
-try await whisper.preload()
 
 // Premium read-aloud — picks the best installed voice for the locale.
 // Ask users to install Enhanced/Premium voices under
@@ -291,20 +278,37 @@ let tts = TextToSpeech(
 
 let assistant = VoiceAssistant(
     backend: backend,
-    whisper: .init(language: "ja"),
+    transcriber: SpeechToText(),
     speaker: tts,
     systemPrompt: "You are a concise spoken assistant."
 )
 ```
 
-One-liner file transcription with Whisper:
+### Bring your own Whisper
+
+LocalAIKit doesn't bundle [WhisperKit](https://github.com/argmaxinc/WhisperKit):
+its `swift-transformers` requirement collides with `mlx-swift-examples`, and
+pinning it inside this graph would force everyone building with MLX to give
+up MLX. If you want Whisper-grade transcription, add WhisperKit to your own
+app and plug it in through `VoiceTranscriber`:
 
 ```swift
-let text = try await AIKit.transcribeWithWhisper(audio: audio, language: "ja")
+import AIKit
+import WhisperKit
 
-// Or with segment timestamps:
-let detailed = try await AIKit.transcribeWithWhisperDetailed(audio: audio, wordTimestamps: true)
-for seg in detailed.segments { print(seg.start, seg.end, seg.text) }
+final class WhisperTranscriber: VoiceTranscriber {
+    private let pipeline: WhisperKit
+    init(pipeline: WhisperKit) { self.pipeline = pipeline }
+    func requestAuthorization() async -> Bool { /* AVAudioApplication */ true }
+    func live() throws -> AsyncThrowingStream<VoiceTranscriberResult, Error> { /* … */ }
+    func stop() { /* … */ }
+}
+
+let assistant = VoiceAssistant(
+    backend: backend,
+    transcriber: WhisperTranscriber(pipeline: try await WhisperKit()),
+    speaker: tts
+)
 ```
 
 ## Tool calling

@@ -40,7 +40,6 @@ let package = Package(
                 .product(name: "AIKitCoreMLLLM", package: "LocalAIKit"),
                 .product(name: "AIKitVision", package: "LocalAIKit"),
                 .product(name: "AIKitSpeech", package: "LocalAIKit"),
-                .product(name: "AIKitWhisperKit", package: "LocalAIKit"),
                 .product(name: "AIKitUI", package: "LocalAIKit"),
                 .product(name: "AIKitIntegration", package: "LocalAIKit"),
                 .product(name: "AIKitAgent", package: "LocalAIKit")

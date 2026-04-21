@@ -39,7 +39,7 @@ public enum PrivacyKeys {
     public static let microphone = Entry(
         key: "NSMicrophoneUsageDescription",
         suggestedValue: "Used to capture your voice for on-device transcription.",
-        requiredBy: ["VoiceAssistant", "AIVoiceAssistantView", "WhisperSpeechToText"]
+        requiredBy: ["VoiceAssistant", "AIVoiceAssistantView"]
     )
 
     /// Speech recognition — `SFSpeechRecognizer`.
