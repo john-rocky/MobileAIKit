@@ -32,7 +32,7 @@ public enum AIHostingController {
         UIHostingController(rootView: AICameraAssistantView(backend: backend))
     }
 
-    public static func modelDownload(descriptor: ModelDescriptor, onReady: @escaping (URL) -> Void) -> UIViewController {
+    public static func modelDownload(descriptor: ModelDescriptor, onReady: @escaping @Sendable (URL) -> Void) -> UIViewController {
         UIHostingController(rootView: AIModelDownloadView(descriptor: descriptor, onReady: onReady))
     }
 

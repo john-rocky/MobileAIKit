@@ -5,7 +5,7 @@ import AIKit
 public struct AIModelDownloadView: View {
     public let descriptor: ModelDescriptor
     public let downloader: HFModelDownloader
-    public let onReady: (URL) -> Void
+    public let onReady: @Sendable (URL) -> Void
 
     @State private var progress: DownloadProgress?
     @State private var error: String?
@@ -15,7 +15,7 @@ public struct AIModelDownloadView: View {
     public init(
         descriptor: ModelDescriptor,
         downloader: HFModelDownloader = HFModelDownloader(),
-        onReady: @escaping (URL) -> Void
+        onReady: @escaping @Sendable (URL) -> Void
     ) {
         self.descriptor = descriptor
         self.downloader = downloader
