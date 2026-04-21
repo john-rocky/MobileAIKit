@@ -1,0 +1,34 @@
+name: SPM resolve
+
+# Catches upstream dependency breakage (e.g. a transitive package removing
+# its Package.swift, or a version-range conflict between siblings) the moment
+# it happens, instead of when a consumer tries a clean checkout.
+#
+# Resolve-only — no build, no tests. Device builds live elsewhere.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Package.swift'
+      - '.github/workflows/spm-resolve.yml'
+  pull_request:
+    paths:
+      - 'Package.swift'
+      - '.github/workflows/spm-resolve.yml'
+  schedule:
+    # Daily so upstream changes on pinned branches/revisions surface quickly.
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+
+jobs:
+  resolve:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Swift version
+        run: swift --version
+      - name: Clean resolve (no cache, no Package.resolved)
+        run: |
+          rm -rf .build .swiftpm Package.resolved
+          swift package resolve

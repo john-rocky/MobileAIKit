@@ -42,9 +42,14 @@ let package = Package(
         .package(url: "https://github.com/ml-explore/mlx-swift", from: "0.21.2"),
         .package(url: "https://github.com/ml-explore/mlx-swift-examples", from: "2.21.0"),
         .package(url: "https://github.com/huggingface/swift-transformers", from: "0.1.17"),
-        .package(url: "https://github.com/ggml-org/llama.cpp", branch: "master"),
+        // Pinned: llama.cpp removed Package.swift from master on 2025-03-05 (PR #11996).
+        // 5bbe6a9f is the last commit that shipped a root Package.swift exporting the `llama` product.
+        .package(url: "https://github.com/ggml-org/llama.cpp", revision: "5bbe6a9fe9a8796a9389c85accec89dbc4d91e39"),
         .package(url: "https://github.com/john-rocky/coreml-llm", branch: "main"),
-        .package(url: "https://github.com/argmaxinc/WhisperKit", from: "0.18.0")
+        // Pinned to 0.14.x: WhisperKit >= 0.15 requires swift-transformers 1.1.x,
+        // which conflicts with coreml-llm (needs 0.1.x). Revisit once coreml-llm
+        // moves to swift-transformers 1.x.
+        .package(url: "https://github.com/argmaxinc/WhisperKit", "0.14.1"..<"0.15.0")
     ],
     targets: [
         .target(
