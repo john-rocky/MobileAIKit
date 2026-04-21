@@ -27,7 +27,43 @@ Choose the products you need:
 | `AIKitWhisperKit` | High-accuracy STT via [WhisperKit](https://github.com/argmaxinc/WhisperKit) (on-device Whisper) |
 | `AIKitUI` | Chat, RAG, voice, camera, benchmark, memory inspector prefabs |
 | `AIKitIntegration` | EventKit, Contacts, Photos, PDFKit, Maps, HealthKit, Motion, Web, Notifications |
+| `AIKitAgent` | Drop-in AI Agent that can drive the whole app — camera, pickers, every integration, your own tools |
 | `AIKitAll` | Everything above |
+
+## Drop-in AI Agent (zero config)
+
+Add one view. The user types a prompt; the model picks from every tool this platform exposes — camera, photo library, calendar, contacts, maps, weather, HealthKit, web, vision, speech — plus any custom tools you register.
+
+```swift
+import SwiftUI
+import AIKit
+import AIKitAgent
+
+struct ContentView: View {
+    let backend: any AIBackend
+    var body: some View {
+        AIAgentDefaultView(backend: backend)   // entire assistant in 1 line
+    }
+}
+```
+
+Add your own app-specific action:
+
+```swift
+AIAgentDefaultView(
+    backend: backend,
+    extraTools: [AppTools.addToCartTool(cart: cart)]
+)
+```
+
+Headless (Siri shortcut / background task):
+
+```swift
+let agent = await AgentKit.build(backend: backend)  // no UI host attached
+let reply = try await agent.send("Summarize my meetings today.").content
+```
+
+How it works: `AIAgent` owns a `ChatSession` and a `ToolRegistry`. UI-presenting tools (camera, scanner, location picker, share sheet) route through an `AgentHost` protocol — `AIAgentView` installs itself as the host automatically; headless agents get `NullAgentHost`, so UI tools fail with a clear error the model can handle. Tools marked `requiresApproval` always prompt the user via `AgentHost.confirm` before running.
 
 ## Quick start (1 line to chat)
 

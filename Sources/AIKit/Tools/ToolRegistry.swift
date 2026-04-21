@@ -23,6 +23,14 @@ public actor ToolRegistry {
         tools[tool.spec.name] = tool
     }
 
+    public func setApprovalHandler(_ handler: (@Sendable (ToolSpec, Data) async -> Bool)?) {
+        self.approvalHandler = handler
+    }
+
+    public func setAuditHandler(_ handler: (@Sendable (ToolCall, ToolResult, TimeInterval) -> Void)?) {
+        self.auditHandler = handler
+    }
+
     public func register<Args: Decodable & Sendable, Out: Encodable & Sendable>(
         name: String,
         description: String,

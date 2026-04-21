@@ -22,6 +22,7 @@ let package = Package(
         .library(name: "AIKitWhisperKit", targets: ["AIKitWhisperKit"]),
         .library(name: "AIKitUI", targets: ["AIKitUI"]),
         .library(name: "AIKitIntegration", targets: ["AIKitIntegration"]),
+        .library(name: "AIKitAgent", targets: ["AIKitAgent"]),
         .library(name: "AIKitAll", targets: [
             "AIKit",
             "AIKitFoundationModels",
@@ -33,7 +34,8 @@ let package = Package(
             "AIKitSpeech",
             "AIKitWhisperKit",
             "AIKitUI",
-            "AIKitIntegration"
+            "AIKitIntegration",
+            "AIKitAgent"
         ])
     ],
     dependencies: [
@@ -120,6 +122,17 @@ let package = Package(
             name: "AIKitIntegration",
             dependencies: ["AIKit"],
             path: "Sources/AIKitIntegration"
+        ),
+        .target(
+            name: "AIKitAgent",
+            dependencies: [
+                "AIKit",
+                "AIKitUI",
+                "AIKitIntegration",
+                "AIKitVision",
+                "AIKitSpeech"
+            ],
+            path: "Sources/AIKitAgent"
         ),
         .testTarget(
             name: "AIKitTests",
