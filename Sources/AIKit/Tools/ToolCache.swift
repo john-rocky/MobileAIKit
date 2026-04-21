@@ -56,7 +56,7 @@ public actor ToolRetry {
         self.maxDelay = maxDelay
     }
 
-    public func run<T>(_ op: @Sendable () async throws -> T) async throws -> T {
+    public func run<T: Sendable>(_ op: @Sendable () async throws -> T) async throws -> T {
         var lastError: Error?
         for attempt in 0..<maxAttempts {
             do { return try await op() }
