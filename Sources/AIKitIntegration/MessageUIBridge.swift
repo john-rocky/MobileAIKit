@@ -35,7 +35,8 @@ public struct ComposeEmailView: UIViewControllerRepresentable {
 
     public func updateUIViewController(_ vc: MFMailComposeViewController, context: Context) {}
 
-    public final class Coordinator: NSObject, MFMailComposeViewControllerDelegate {
+    @MainActor
+    public final class Coordinator: NSObject, @preconcurrency MFMailComposeViewControllerDelegate {
         let onFinish: (Result<MFMailComposeResult, Error>) -> Void
         init(onFinish: @escaping (Result<MFMailComposeResult, Error>) -> Void) { self.onFinish = onFinish }
         public func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
@@ -72,7 +73,8 @@ public struct ComposeSMSView: UIViewControllerRepresentable {
 
     public func updateUIViewController(_ vc: MFMessageComposeViewController, context: Context) {}
 
-    public final class Coordinator: NSObject, MFMessageComposeViewControllerDelegate {
+    @MainActor
+    public final class Coordinator: NSObject, @preconcurrency MFMessageComposeViewControllerDelegate {
         let onFinish: (MessageComposeResult) -> Void
         init(onFinish: @escaping (MessageComposeResult) -> Void) { self.onFinish = onFinish }
         public func messageComposeViewController(_ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult) {

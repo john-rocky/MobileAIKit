@@ -1,7 +1,7 @@
 import Foundation
 import AIKit
 #if canImport(ActivityKit) && os(iOS)
-import ActivityKit
+@preconcurrency import ActivityKit
 
 public struct GenerationActivityAttributes: ActivityAttributes {
     public struct ContentState: Codable, Hashable {

@@ -1,7 +1,7 @@
 import Foundation
 import AIKit
 #if canImport(BackgroundTasks) && os(iOS)
-import BackgroundTasks
+@preconcurrency import BackgroundTasks
 
 public enum BackgroundTaskRegistrar {
     public static func registerPrewarm(identifier: String, action: @Sendable @escaping () async -> Void) {

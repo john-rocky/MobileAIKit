@@ -1,14 +1,26 @@
 import Foundation
 import AIKit
 #if canImport(CoreNFC) && os(iOS)
-import CoreNFC
+@preconcurrency import CoreNFC
+
+/// Sendable snapshot of an NDEF record — `NFCNDEFMessage` / `NFCNDEFPayload`
+/// aren't Sendable, so extracting the bytes on the delegate queue lets the
+/// value cross the continuation boundary safely.
+public struct NDEFRecordSnapshot: Sendable, Hashable {
+    public let typeName: String
+    public let payload: Data
+    public init(typeName: String, payload: Data) {
+        self.typeName = typeName
+        self.payload = payload
+    }
+}
 
 public final class NFCReaderBridge: NSObject, @unchecked Sendable, NFCNDEFReaderSessionDelegate {
-    private var continuation: CheckedContinuation<[NFCNDEFMessage], Error>?
+    private var continuation: CheckedContinuation<[NDEFRecordSnapshot], Error>?
 
     public override init() { super.init() }
 
-    public func readSingleTag(alertMessage: String = "Hold your phone near the NFC tag") async throws -> [NFCNDEFMessage] {
+    public func readSingleTag(alertMessage: String = "Hold your phone near the NFC tag") async throws -> [NDEFRecordSnapshot] {
         guard NFCNDEFReaderSession.readingAvailable else {
             throw AIError.unsupportedCapability("NFC not available")
         }
@@ -26,7 +38,15 @@ public final class NFCReaderBridge: NSObject, @unchecked Sendable, NFCNDEFReader
     }
 
     public func readerSession(_ session: NFCNDEFReaderSession, didDetectNDEFs messages: [NFCNDEFMessage]) {
-        continuation?.resume(returning: messages)
+        let snapshots = messages.flatMap { msg in
+            msg.records.map { record in
+                NDEFRecordSnapshot(
+                    typeName: String(data: record.type, encoding: .utf8) ?? "?",
+                    payload: record.payload
+                )
+            }
+        }
+        continuation?.resume(returning: snapshots)
         continuation = nil
     }
 
@@ -41,14 +61,12 @@ public final class NFCReaderBridge: NSObject, @unchecked Sendable, NFCNDEFReader
         struct Args: Decodable {}
         struct Record: Encodable { let type: String; let text: String }
         return TypedTool(spec: spec) { (_: Args) async throws -> [Record] in
-            let messages = try await self.readSingleTag()
-            return messages.flatMap { msg in
-                msg.records.map { r in
-                    Record(
-                        type: String(data: r.type, encoding: .utf8) ?? "?",
-                        text: String(data: r.payload, encoding: .utf8) ?? r.payload.base64EncodedString()
-                    )
-                }
+            let records = try await self.readSingleTag()
+            return records.map { r in
+                Record(
+                    type: r.typeName,
+                    text: String(data: r.payload, encoding: .utf8) ?? r.payload.base64EncodedString()
+                )
             }
         }
     }

@@ -32,11 +32,14 @@ public struct AIKitChatIntent: AppIntent {
 @available(iOS 17.0, macOS 14.0, *)
 public struct AIKitShortcuts: AppShortcutsProvider {
     public static var appShortcuts: [AppShortcut] {
+        // Natural-language parameter injection (`\(\.$prompt)`) requires
+        // `prompt` to be an AppEntity or AppEnum; plain `String` isn't
+        // allowed anymore. Shortcuts can still trigger the intent and
+        // prompt the user for input via the standard picker.
         AppShortcut(
             intent: AIKitChatIntent(),
             phrases: [
-                "Ask \(.applicationName)",
-                "Ask \(.applicationName) \(\.$prompt)"
+                "Ask \(.applicationName)"
             ],
             shortTitle: "Ask AI",
             systemImageName: "bubble.left.and.bubble.right"

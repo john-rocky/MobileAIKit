@@ -5,19 +5,20 @@ name: SPM resolve + build
 # concurrency the moment either lands, instead of when a consumer tries a
 # clean checkout.
 #
-# Two stages:
+# Three stages:
 #   1. `swift package resolve` — fetches all packages, validates version
 #      ranges are satisfiable.
 #   2. `swift build --target <target>` for every library target except
-#      AIKitLlamaCpp. Catches Sendable / actor-isolation / API-surface
-#      regressions that slipped past round 7 (5 errors in AIKit alone
-#      plus a long tail in AIKitIntegration / AIKitUI / AIKitMLX etc.).
+#      AIKitLlamaCpp on macOS.
+#   3. `xcodebuild -destination 'generic/platform=iOS'` for every library
+#      target except AIKitLlamaCpp. iOS strict concurrency is tighter
+#      than the macOS equivalent (captures the `#if os(iOS)` /
+#      `canImport(UIKit|ARKit|CoreNFC|BackgroundTasks|…)` blocks that
+#      macOS skips).
 #
 # AIKitLlamaCpp is intentionally excluded: llama.cpp uses `.systemLibrary`
 # with pkg-config pointing at a brew install whose llama.h currently
-# fails to resolve `ggml.h`. That's an upstream / packaging issue,
-# orthogonal to the kit's own code. Revisit when llama.cpp ships a
-# self-contained Package.swift again or we split it into a satellite.
+# fails to resolve `ggml.h`. Orthogonal to the kit's own code.
 
 on:
   push:
@@ -37,7 +38,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  resolve-and-build:
+  macos:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -47,10 +48,29 @@ jobs:
         run: |
           rm -rf .build .swiftpm Package.resolved
           swift package resolve
-      - name: Build every library target except AIKitLlamaCpp
+      - name: Build every library target except AIKitLlamaCpp (macOS)
         run: |
           for target in AIKit AIKitFoundationModels AIKitMLX AIKitCoreML AIKitCoreMLLLM AIKitVision AIKitSpeech AIKitUI AIKitIntegration AIKitAgent; do
             echo "::group::swift build --target $target"
             swift build --target "$target"
+            echo "::endgroup::"
+          done
+
+  ios:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Show Xcode version
+        run: xcodebuild -version
+      - name: Build every library target except AIKitLlamaCpp (iOS)
+        run: |
+          for scheme in AIKit AIKitFoundationModels AIKitMLX AIKitCoreML AIKitCoreMLLLM AIKitVision AIKitSpeech AIKitUI AIKitIntegration AIKitAgent; do
+            echo "::group::xcodebuild -scheme $scheme -destination 'generic/platform=iOS'"
+            xcodebuild \
+              -scheme "$scheme" \
+              -destination 'generic/platform=iOS' \
+              -skipMacroValidation \
+              -skipPackagePluginValidation \
+              build | tail -60
             echo "::endgroup::"
           done
