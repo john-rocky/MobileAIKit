@@ -20,7 +20,7 @@ public actor ModelIntegrityChecker {
     @discardableResult
     public func autoRepair(
         _ descriptor: ModelDescriptor,
-        downloader: ModelDownloader
+        downloader: HFModelDownloader
     ) async throws -> URL {
         if try await verify(descriptor) {
             return await cache.directory(for: descriptor)

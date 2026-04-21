@@ -162,8 +162,7 @@ public final class CoreMLEmbedder: Embedder, @unchecked Sendable {
     }
 
     public func load() async throws {
-        lock.lock(); let cached = model; lock.unlock()
-        if cached != nil { return }
+        if lock.withLock({ model }) != nil { return }
 
         let mlConfig = MLModelConfiguration()
         mlConfig.computeUnits = configuration.computeUnits
@@ -185,29 +184,29 @@ public final class CoreMLEmbedder: Embedder, @unchecked Sendable {
             throw AIError.tokenizerNotFound
         }
 
-        lock.lock()
-        self.model = loaded
-        self.tokenizer = tok
-        lock.unlock()
+        lock.withLock {
+            self.model = loaded
+            self.tokenizer = tok
+        }
     }
 
     public func unload() {
-        lock.lock()
-        model = nil
-        tokenizer = nil
-        lock.unlock()
+        lock.withLock {
+            model = nil
+            tokenizer = nil
+        }
     }
 
     public func embed(_ text: String) async throws -> [Float] {
         try await load()
-        lock.lock(); let mdl = model; let tok = tokenizer; lock.unlock()
+        let (mdl, tok) = lock.withLock { (model, tokenizer) }
         guard let mdl, let tok else { throw AIError.modelNotLoaded }
         return try Self.run(text, model: mdl, tokenizer: tok, config: configuration)
     }
 
     public func embed(batch: [String]) async throws -> [[Float]] {
         try await load()
-        lock.lock(); let mdl = model; let tok = tokenizer; lock.unlock()
+        let (mdl, tok) = lock.withLock { (model, tokenizer) }
         guard let mdl, let tok else { throw AIError.modelNotLoaded }
         var out: [[Float]] = []
         out.reserveCapacity(batch.count)

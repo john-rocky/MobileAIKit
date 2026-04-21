@@ -137,7 +137,7 @@ public extension AIAgent {
         }
         #endif
 
-        #if canImport(CoreMotion)
+        #if canImport(CoreMotion) && !os(macOS)
         if options.includeMotion {
             let bridge = MotionBridge()
             tools.append(bridge.stepCountTool())
@@ -156,7 +156,9 @@ public extension AIAgent {
         if options.includeMusic {
             let bridge = MusicKitBridge()
             tools.append(bridge.searchSongsTool())
+            #if !os(macOS)
             tools.append(bridge.playSongTool())
+            #endif
         }
         #endif
 

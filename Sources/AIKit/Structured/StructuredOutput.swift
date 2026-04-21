@@ -1,6 +1,8 @@
 import Foundation
 
-public struct StructuredDecoder {
+public struct StructuredDecoder: @unchecked Sendable {
+    // @unchecked: JSONDecoder is thread-safe for concurrent .decode() calls,
+    // and we never mutate `decoder` or `repairEnabled` after init across actors.
     public var decoder: JSONDecoder
     public var repairEnabled: Bool
 

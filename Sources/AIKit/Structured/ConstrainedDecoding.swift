@@ -66,13 +66,12 @@ public struct EnumForcedDecoder<Value: RawRepresentable & CaseIterable & Sendabl
         input: String,
         instruction: String
     ) async throws -> Value {
-        struct Out: Decodable { let label: String }
         let schema: JSONSchema = .object(
             properties: ["label": .string(enumValues: Array(Value.allCases).map(\.rawValue))],
             required: ["label"]
         )
-        let out: Out = try await constrained.decode(
-            Out.self,
+        let out: EnumForcedOut = try await constrained.decode(
+            EnumForcedOut.self,
             schema: schema,
             backend: backend,
             messages: [.user("\(instruction)\n\n\(input)")]
@@ -82,4 +81,8 @@ public struct EnumForcedDecoder<Value: RawRepresentable & CaseIterable & Sendabl
         }
         return value
     }
+}
+
+fileprivate struct EnumForcedOut: Decodable, Sendable {
+    let label: String
 }

@@ -2,7 +2,7 @@ import Foundation
 
 public actor PersistentMemoryStore: MemoryStoreProtocol {
     private let fileURL: URL
-    private var backing: InMemoryStore
+    private let backing: InMemoryStore
     private var saveTask: Task<Void, Never>?
 
     public init(
@@ -28,7 +28,7 @@ public actor PersistentMemoryStore: MemoryStoreProtocol {
         try loadSync()
     }
 
-    private func loadSync() throws {
+    private nonisolated func loadSync() throws {
         guard FileManager.default.fileExists(atPath: fileURL.path) else { return }
         let data = try Data(contentsOf: fileURL)
         let records = try JSONDecoder().decode([MemoryRecord].self, from: data)

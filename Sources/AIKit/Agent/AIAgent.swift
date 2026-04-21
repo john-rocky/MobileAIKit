@@ -115,8 +115,10 @@ public final class AIAgent {
     /// runtime is safe.
     public func hostProvider() -> AgentHostProvider {
         return { [weak self] in
-            guard let self else { return NullAgentHost() }
-            return await MainActor.run { self.host }
+            await MainActor.run {
+                guard let self else { return NullAgentHost() as any AgentHost }
+                return self.host
+            }
         }
     }
 

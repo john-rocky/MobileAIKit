@@ -7,7 +7,7 @@ import AppIntents
 #if canImport(AppIntents)
 @available(iOS 17.0, macOS 14.0, *)
 public struct AIKitChatIntent: AppIntent {
-    public static var title: LocalizedStringResource = "Ask LocalAIKit"
+    public static let title: LocalizedStringResource = "Ask LocalAIKit"
 
     @Parameter(title: "Prompt")
     public var prompt: String
@@ -22,7 +22,11 @@ public struct AIKitChatIntent: AppIntent {
         return .result(value: answer)
     }
 
-    public static var backendProvider: (@Sendable () -> (any AIBackend)?)?
+    /// Host apps set this once during launch to provide the backend used by
+    /// Shortcuts invocations. nonisolated(unsafe) because AppIntent can't host
+    /// this as an actor-isolated value and consumers set it before any shortcut
+    /// runs.
+    public nonisolated(unsafe) static var backendProvider: (@Sendable () -> (any AIBackend)?)?
 }
 
 @available(iOS 17.0, macOS 14.0, *)

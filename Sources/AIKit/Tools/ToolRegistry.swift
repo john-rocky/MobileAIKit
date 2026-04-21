@@ -71,7 +71,7 @@ public actor ToolRegistry {
 
         if dryRun {
             let payload: [String: Any] = ["dryRun": true, "tool": call.name, "arguments": call.arguments]
-            let body = (try? JSONSerialization.data(withJSONObject: payload).map { $0 }) ?? Data()
+            let body = (try? JSONSerialization.data(withJSONObject: payload)) ?? Data()
             return ToolResult(text: String(data: body, encoding: .utf8) ?? "dry-run", json: body)
         }
 

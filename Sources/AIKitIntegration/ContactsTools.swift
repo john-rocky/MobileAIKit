@@ -35,7 +35,10 @@ public final class ContactsBridge: @unchecked Sendable {
             let phones: [String]
             let emails: [String]
         }
-        return TypedTool(spec: spec) { [store] (args: Args) async throws -> [Out] in
+        return TypedTool(spec: spec) { (args: Args) async throws -> [Out] in
+            // CNContactStore is not Sendable; construct one per invocation so
+            // the @Sendable TypedTool closure doesn't capture shared state.
+            let store = CNContactStore()
             let predicate = CNContact.predicateForContacts(matchingName: args.query)
             let keys = [
                 CNContactGivenNameKey, CNContactFamilyNameKey,

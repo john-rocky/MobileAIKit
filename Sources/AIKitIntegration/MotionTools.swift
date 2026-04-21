@@ -1,6 +1,6 @@
 import Foundation
 import AIKit
-#if canImport(CoreMotion)
+#if canImport(CoreMotion) && !os(macOS)
 import CoreMotion
 
 public final class MotionBridge: @unchecked Sendable {
@@ -37,7 +37,9 @@ public final class MotionBridge: @unchecked Sendable {
         )
         struct Args: Decodable { let hours: Double }
         struct Out: Encodable { let steps: Int; let distanceMeters: Double }
-        return TypedTool(spec: spec) { [pedometer] (args: Args) async throws -> Out in
+        return TypedTool(spec: spec) { (args: Args) async throws -> Out in
+            // CMPedometer is not Sendable; build a fresh instance per call.
+            let pedometer = CMPedometer()
             let end = Date()
             let start = end.addingTimeInterval(-args.hours * 3600)
             return try await withCheckedThrowingContinuation { cont in

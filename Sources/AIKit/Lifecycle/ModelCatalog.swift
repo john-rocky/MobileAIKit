@@ -1,6 +1,6 @@
 import Foundation
 
-/// Curated list of on-device-friendly local models with URLs that `ModelDownloader` can fetch.
+/// Curated list of on-device-friendly local models with URLs that `HFModelDownloader` can fetch.
 ///
 /// The catalog prioritises recent (2025–2026) small-to-mid models that fit within
 /// an iPhone's RAM budget. All GGUF entries are Q4_K_M quantisations; MLX entries

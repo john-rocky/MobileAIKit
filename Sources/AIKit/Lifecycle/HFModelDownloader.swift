@@ -14,7 +14,7 @@ public struct DownloadProgress: Sendable, Hashable {
     }
 }
 
-public actor ModelDownloader {
+public actor HFModelDownloader {
     private let cache: ModelCache
     private let session: URLSession
     private var active: [String: Task<Void, Error>] = [:]
@@ -47,8 +47,12 @@ public actor ModelDownloader {
             let dir = await cache.directory(for: descriptor)
             try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
 
-            var files = descriptor.files
-            if let tok = descriptor.tokenizer { files.append(tok) }
+            let files: [ModelFile] = {
+                var fs = descriptor.files
+                if let tok = descriptor.tokenizer { fs.append(tok) }
+                return fs
+            }()
+            let fileCount = files.count
 
             let total = files.reduce(Int64(0)) { $0 + ($1.expectedBytes ?? 0) }
             var overallDone: Int64 = 0
@@ -66,6 +70,9 @@ public actor ModelDownloader {
                     at: dest.deletingLastPathComponent(),
                     withIntermediateDirectories: true
                 )
+                // Snapshot mutable state so the @Sendable onChunk closure captures
+                // immutable values — Swift 6 strict concurrency forbids var capture.
+                let doneSnapshot = overallDone
                 try await Self.downloadResumable(
                     from: file.url,
                     to: dest,
@@ -73,12 +80,12 @@ public actor ModelDownloader {
                     onChunk: { downloaded, totalForFile in
                         let report = DownloadProgress(
                             fileIndex: idx,
-                            fileCount: files.count,
+                            fileCount: fileCount,
                             file: file.relativePath,
                             bytesDownloaded: downloaded,
                             totalBytes: totalForFile,
-                            overallBytesDownloaded: overallDone + downloaded,
-                            overallTotalBytes: max(total, overallDone + totalForFile)
+                            overallBytesDownloaded: doneSnapshot + downloaded,
+                            overallTotalBytes: max(total, doneSnapshot + totalForFile)
                         )
                         progress?(report)
                     }

@@ -1,5 +1,7 @@
 import Foundation
 import AIKit
+import struct AIKit.Message
+import struct AIKit.ToolSpec
 import CoreML
 import Tokenizers
 import Hub
@@ -64,8 +66,7 @@ public final class CoreMLBackend: AIBackend, @unchecked Sendable {
     }
 
     public func load() async throws {
-        lock.lock(); defer { lock.unlock() }
-        if model != nil && tokenizer != nil { return }
+        if lock.withLock({ model != nil && tokenizer != nil }) { return }
 
         let config = MLModelConfiguration()
         config.computeUnits = configuration.computeUnits
@@ -77,21 +78,27 @@ public final class CoreMLBackend: AIBackend, @unchecked Sendable {
             compiledURL = try await MLModel.compileModel(at: configuration.modelURL)
         }
         let loaded = try MLModel(contentsOf: compiledURL, configuration: config)
-        self.model = loaded
 
+        let resolvedTokenizer: Tokenizer
         if let repoId = configuration.tokenizerRepoId {
-            self.tokenizer = try await AutoTokenizer.from(pretrained: repoId)
+            resolvedTokenizer = try await AutoTokenizer.from(pretrained: repoId)
         } else if let dir = configuration.tokenizerDirectory {
-            self.tokenizer = try await AutoTokenizer.from(modelFolder: dir)
+            resolvedTokenizer = try await AutoTokenizer.from(modelFolder: dir)
         } else {
             throw AIError.tokenizerNotFound
+        }
+
+        lock.withLock {
+            self.model = loaded
+            self.tokenizer = resolvedTokenizer
         }
     }
 
     public func unload() async {
-        lock.lock(); defer { lock.unlock() }
-        model = nil
-        tokenizer = nil
+        lock.withLock {
+            model = nil
+            tokenizer = nil
+        }
     }
 
     public func generate(

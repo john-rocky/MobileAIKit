@@ -48,7 +48,7 @@ public final class FoundationModelsBackend: AIBackend, @unchecked Sendable {
             } else {
                 newSession = LanguageModelSession()
             }
-            lock.lock(); session = newSession; lock.unlock()
+            lock.withLock { session = newSession }
         case .unavailable(let reason):
             throw AIError.modelLoadFailed("Foundation Models unavailable: \(reason)")
         @unknown default:
@@ -61,7 +61,7 @@ public final class FoundationModelsBackend: AIBackend, @unchecked Sendable {
 
     public func unload() async {
         #if canImport(FoundationModels)
-        lock.lock(); session = nil; lock.unlock()
+        lock.withLock { session = nil }
         #endif
     }
 
@@ -135,15 +135,13 @@ public final class FoundationModelsBackend: AIBackend, @unchecked Sendable {
 
     #if canImport(FoundationModels)
     private func ensureSession() async throws -> LanguageModelSession {
-        lock.lock()
-        if let s = session {
-            lock.unlock()
+        if let s = lock.withLock({ session }) {
             return s
         }
-        lock.unlock()
         try await load()
-        lock.lock(); defer { lock.unlock() }
-        guard let s = session else { throw AIError.modelNotLoaded }
+        guard let s = lock.withLock({ session }) else {
+            throw AIError.modelNotLoaded
+        }
         return s
     }
     #endif

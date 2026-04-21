@@ -1,5 +1,8 @@
 import Foundation
 import AIKit
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 #if canImport(UIKit)
 import UIKit
 #endif

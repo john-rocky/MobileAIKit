@@ -60,9 +60,9 @@ public actor AdapterRegistry {
 }
 
 public actor AdapterDownloader {
-    public let downloader: ModelDownloader
+    public let downloader: HFModelDownloader
 
-    public init(downloader: ModelDownloader = ModelDownloader()) {
+    public init(downloader: HFModelDownloader = HFModelDownloader()) {
         self.downloader = downloader
     }
 

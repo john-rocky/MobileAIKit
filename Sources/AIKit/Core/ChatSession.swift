@@ -76,7 +76,7 @@ public final class ChatSession {
             )
             lastUsage = result.usage
             messages.append(result.message)
-            telemetry?.record(usage: result.usage)
+            await telemetry?.record(usage: result.usage)
 
             if !result.message.toolCalls.isEmpty, let registry = toolRegistry {
                 let toolMessages = try await registry.executeAll(

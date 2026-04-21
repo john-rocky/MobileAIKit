@@ -191,15 +191,19 @@ public final class HealthKitBridge: @unchecked Sendable {
             }
         }
 
-        async let cal = sum(.dietaryEnergyConsumed, unit: .kilocalorie())
-        async let pro = sum(.dietaryProtein, unit: .gram())
-        async let car = sum(.dietaryCarbohydrates, unit: .gram())
-        async let fat = sum(.dietaryFatTotal, unit: .gram())
-        async let fib = sum(.dietaryFiber, unit: .gram())
-        async let sug = sum(.dietarySugar, unit: .gram())
-        async let wat = sum(.dietaryWater, unit: .literUnit(with: .milli))
+        // HKHealthStore is not Sendable, so the `sum` closure can't cross task
+        // boundaries via `async let`. HKStatisticsQuery dispatches to its own
+        // background queue internally, so running these sequentially here
+        // doesn't materially slow things down.
+        let cal = await sum(.dietaryEnergyConsumed, unit: .kilocalorie())
+        let pro = await sum(.dietaryProtein, unit: .gram())
+        let car = await sum(.dietaryCarbohydrates, unit: .gram())
+        let fat = await sum(.dietaryFatTotal, unit: .gram())
+        let fib = await sum(.dietaryFiber, unit: .gram())
+        let sug = await sum(.dietarySugar, unit: .gram())
+        let wat = await sum(.dietaryWater, unit: .literUnit(with: .milli))
 
-        return await NutritionEntry(
+        return NutritionEntry(
             name: nil,
             calories: cal,
             proteinGrams: pro,

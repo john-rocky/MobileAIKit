@@ -48,6 +48,7 @@ public final class MusicKitBridge: @unchecked Sendable {
         }
     }
 
+    #if !os(macOS)
     public func playSongTool() -> any Tool {
         let spec = ToolSpec(
             name: "play_song",
@@ -71,5 +72,6 @@ public final class MusicKitBridge: @unchecked Sendable {
             return Out(started: true)
         }
     }
+    #endif
 }
 #endif

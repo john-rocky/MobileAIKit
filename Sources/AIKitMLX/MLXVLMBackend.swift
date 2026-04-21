@@ -1,5 +1,6 @@
 import Foundation
 import AIKit
+import struct AIKit.Message
 import MLX
 import MLXVLM
 import MLXLMCommon
@@ -112,7 +113,7 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
     }
 
     public func load() async throws {
-        lock.lock(); let existing = container; lock.unlock()
+        let existing = lock.withLock { container }
         if existing != nil { return }
         do {
             let factory = VLMModelFactory.shared
@@ -122,9 +123,7 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
                 hub: HubApi(),
                 configuration: configuration
             ) { _ in }
-            lock.lock()
-            self.container = loaded
-            lock.unlock()
+            lock.withLock { self.container = loaded }
         } catch {
             throw AIError.modelLoadFailed(error.localizedDescription)
         }
@@ -141,7 +140,7 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
     /// If you need distinct `.downloading` / `.initializing` / `.ready` stages, prefer
     /// ``load(phase:)`` which exposes a typed ``LoadEvent`` sequence.
     public func load(progress: @escaping @Sendable (Double) -> Void) async throws {
-        lock.lock(); let existing = container; lock.unlock()
+        let existing = lock.withLock { container }
         if existing != nil { progress(1.0); return }
         do {
             let factory = VLMModelFactory.shared
@@ -153,9 +152,7 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
             ) { p in
                 progress(p.fractionCompleted)
             }
-            lock.lock()
-            self.container = loaded
-            lock.unlock()
+            lock.withLock { self.container = loaded }
         } catch {
             throw AIError.modelLoadFailed(error.localizedDescription)
         }
@@ -174,24 +171,23 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
     /// `load()` with typed phase events so UIs can show "Downloading" vs "Warming up"
     /// separately instead of a single opaque bar.
     public func load(phase: @escaping @Sendable (LoadEvent) -> Void) async throws {
-        lock.lock(); let existing = container; lock.unlock()
+        let existing = lock.withLock { container }
         if existing != nil { phase(.ready); return }
         do {
             let factory = VLMModelFactory.shared
             let configuration = ModelConfiguration(id: hubRepoId)
             MLX.GPU.set(cacheLimit: gpuCacheLimitBytes)
-            var sawDownload = false
             let loaded = try await factory.loadContainer(
                 hub: HubApi(),
                 configuration: configuration
             ) { p in
-                sawDownload = true
                 phase(.downloading(fraction: p.fractionCompleted))
             }
-            if sawDownload { phase(.initializing) }
-            lock.lock()
-            self.container = loaded
-            lock.unlock()
+            // Always emit .initializing between download and .ready. A cached
+            // load skips the download phase entirely but still warms up the
+            // context, so this stage is meaningful either way.
+            phase(.initializing)
+            lock.withLock { self.container = loaded }
             phase(.ready)
         } catch {
             throw AIError.modelLoadFailed(error.localizedDescription)
@@ -199,7 +195,7 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
     }
 
     public func unload() async {
-        lock.lock(); container = nil; lock.unlock()
+        lock.withLock { container = nil }
         MLX.GPU.clearCache()
     }
 
@@ -234,11 +230,14 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
                     guard let container = self.container else { throw AIError.modelNotLoaded }
                     let chat = try await Self.mapChat(messages)
                     let input = try UserInput(chat: chat)
-                    var params = GenerateParameters()
-                    params.maxTokens = config.maxTokens
-                    params.temperature = config.temperature
-                    params.topP = config.topP
-                    params.repetitionPenalty = config.repetitionPenalty
+                    let params: GenerateParameters = {
+                        var p = GenerateParameters()
+                        p.maxTokens = config.maxTokens
+                        p.temperature = config.temperature
+                        p.topP = config.topP
+                        p.repetitionPenalty = config.repetitionPenalty
+                        return p
+                    }()
                     try await container.perform { context in
                         let prepared = try await context.processor.prepare(input: input)
                         let generation = try MLXLMCommon.generate(

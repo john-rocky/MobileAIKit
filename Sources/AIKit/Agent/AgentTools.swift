@@ -21,7 +21,7 @@ public enum AgentTools {
             description: "Open the device camera so the user can capture a photo. Returns a reference to the captured image that other tools (ocr_image, analyze_image, send with image) can consume.",
             parameters: .object(
                 properties: [
-                    "camera": .string(enumValues: ["rear", "front"], description: "Which camera to open. Defaults to rear."),
+                    "camera": .string(description: "Which camera to open. Defaults to rear.", enumValues: ["rear", "front"]),
                     "prompt": .string(description: "Optional short instruction shown to the user before they shoot.")
                 ],
                 required: []

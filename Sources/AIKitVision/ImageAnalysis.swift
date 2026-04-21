@@ -57,7 +57,7 @@ public enum ImageAnalysis {
             result.faces.append(.init(boundingBox: obs.boundingBox, roll: obs.roll?.floatValue, yaw: obs.yaw?.floatValue))
         }
         if let h = horizonRequest.results?.first {
-            result.horizonAngle = h.angle
+            result.horizonAngle = Float(h.angle)
         }
         for obs in barcodeRequest.results ?? [] {
             if let payload = obs.payloadStringValue {

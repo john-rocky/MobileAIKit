@@ -36,7 +36,7 @@ public struct AIVoiceAssistantView: View {
                 Image(systemName: isRunning ? "stop.fill" : "mic.fill")
                     .font(.system(size: 44))
                     .frame(width: 96, height: 96)
-                    .background(isRunning ? .red.opacity(0.25) : .tint.opacity(0.15), in: Circle())
+                    .background(isRunning ? Color.red.opacity(0.25) : Color.accentColor.opacity(0.15), in: Circle())
             }
             .buttonStyle(.plain)
             .padding()

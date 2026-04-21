@@ -8,7 +8,7 @@ import ImageIO
 public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
     public enum Source: Sendable {
         case directory(URL)
-        case model(CoreMLLLM.ModelDownloader.ModelInfo)
+        case model(ModelDownloader.ModelInfo)
     }
 
     public let info: BackendInfo
@@ -45,17 +45,17 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
         self.init(source: .directory(directory), computeUnits: computeUnits)
     }
 
-    public convenience init(model: CoreMLLLM.ModelDownloader.ModelInfo, computeUnits: MLComputeUnits = .cpuAndNeuralEngine) {
+    public convenience init(model: ModelDownloader.ModelInfo, computeUnits: MLComputeUnits = .cpuAndNeuralEngine) {
         self.init(source: .model(model), computeUnits: computeUnits)
     }
 
     /// Re-exported so callers can write `CoreMLLLMBackend.ModelInfo.gemma4e2b` without importing `CoreMLLLM` directly.
-    public typealias ModelInfo = CoreMLLLM.ModelDownloader.ModelInfo
+    public typealias ModelInfo = ModelDownloader.ModelInfo
 
     /// Models bundled with `coreml-llm`. Use this to populate pickers
     /// without reaching into the underlying download type.
     public static var availableModels: [ModelInfo] {
-        CoreMLLLM.ModelDownloader.ModelInfo.defaults
+        ModelDownloader.ModelInfo.defaults
     }
 
     public var isLoaded: Bool {
@@ -63,8 +63,7 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
     }
 
     public func load() async throws {
-        lock.lock(); let existing = llm; lock.unlock()
-        if existing != nil { return }
+        if lock.withLock({ llm }) != nil { return }
         do {
             let loaded: CoreMLLLM
             switch source {
@@ -73,7 +72,7 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
             case .model(let info):
                 loaded = try await CoreMLLLM.load(model: info, computeUnits: computeUnits, onProgress: progressHandler)
             }
-            lock.lock(); self.llm = loaded; lock.unlock()
+            lock.withLock { self.llm = loaded }
         } catch {
             throw AIError.modelLoadFailed(error.localizedDescription)
         }
@@ -100,7 +99,7 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
         progress: (@Sendable (Double, String) -> Void)? = nil
     ) async throws {
         guard case .model(let info) = source else { return }
-        let downloader = CoreMLLLM.ModelDownloader.shared
+        let downloader = ModelDownloader.shared
         if downloader.isDownloaded(info) { return }
 
         let pollTask: Task<Void, Never>?
@@ -128,12 +127,12 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
     public var isDownloaded: Bool {
         switch source {
         case .directory(let url): return FileManager.default.fileExists(atPath: url.path)
-        case .model(let info): return CoreMLLLM.ModelDownloader.shared.isDownloaded(info)
+        case .model(let info): return ModelDownloader.shared.isDownloaded(info)
         }
     }
 
     public func unload() async {
-        lock.lock(); llm = nil; lock.unlock()
+        lock.withLock { llm = nil }
     }
 
     public func generate(

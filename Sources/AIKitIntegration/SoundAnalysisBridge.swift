@@ -5,18 +5,23 @@ import SoundAnalysis
 import AVFoundation
 
 public final class SoundAnalysisBridge: NSObject, @unchecked Sendable {
-    public let classifier: SNClassifier?
     public let request: SNClassifySoundRequest
 
     public override init() {
         if #available(iOS 15.0, macOS 12.0, *) {
             let version = SNClassifierIdentifier.version1
-            self.request = (try? SNClassifySoundRequest(classifierIdentifier: version))
-                ?? SNClassifySoundRequest(mlModel: MLModel.dummy())
+            if let req = try? SNClassifySoundRequest(classifierIdentifier: version) {
+                self.request = req
+            } else if let req = try? SNClassifySoundRequest(mlModel: MLModel.dummy()) {
+                self.request = req
+            } else {
+                // Shouldn't happen — version1 is guaranteed to resolve on the
+                // supported OSes. Force-try so the programmer sees the cause.
+                self.request = try! SNClassifySoundRequest(classifierIdentifier: version)
+            }
         } else {
-            self.request = SNClassifySoundRequest(mlModel: MLModel.dummy())
+            self.request = try! SNClassifySoundRequest(mlModel: MLModel.dummy())
         }
-        self.classifier = nil
     }
 
     public func classify(audio: AudioAttachment, window: Double = 1.5) async throws -> [SoundClassification] {

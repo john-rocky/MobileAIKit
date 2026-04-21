@@ -1,20 +1,35 @@
-name: SPM resolve
+name: SPM resolve + build
 
-# Catches upstream dependency breakage (e.g. a transitive package removing
-# its Package.swift, or a version-range conflict between siblings) the moment
-# it happens, instead of when a consumer tries a clean checkout.
+# Catches upstream dependency breakage (version conflicts, transitive
+# package graph rot) AND in-repo compile errors under Swift 6 strict
+# concurrency the moment either lands, instead of when a consumer tries a
+# clean checkout.
 #
-# Resolve-only — no build, no tests. Device builds live elsewhere.
+# Two stages:
+#   1. `swift package resolve` — fetches all packages, validates version
+#      ranges are satisfiable.
+#   2. `swift build --target <target>` for every library target except
+#      AIKitLlamaCpp. Catches Sendable / actor-isolation / API-surface
+#      regressions that slipped past round 7 (5 errors in AIKit alone
+#      plus a long tail in AIKitIntegration / AIKitUI / AIKitMLX etc.).
+#
+# AIKitLlamaCpp is intentionally excluded: llama.cpp uses `.systemLibrary`
+# with pkg-config pointing at a brew install whose llama.h currently
+# fails to resolve `ggml.h`. That's an upstream / packaging issue,
+# orthogonal to the kit's own code. Revisit when llama.cpp ships a
+# self-contained Package.swift again or we split it into a satellite.
 
 on:
   push:
     branches: [main]
     paths:
       - 'Package.swift'
+      - 'Sources/**'
       - '.github/workflows/spm-resolve.yml'
   pull_request:
     paths:
       - 'Package.swift'
+      - 'Sources/**'
       - '.github/workflows/spm-resolve.yml'
   schedule:
     # Daily so upstream changes on pinned branches/revisions surface quickly.
@@ -22,7 +37,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  resolve:
+  resolve-and-build:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
@@ -32,3 +47,10 @@ jobs:
         run: |
           rm -rf .build .swiftpm Package.resolved
           swift package resolve
+      - name: Build every library target except AIKitLlamaCpp
+        run: |
+          for target in AIKit AIKitFoundationModels AIKitMLX AIKitCoreML AIKitCoreMLLLM AIKitVision AIKitSpeech AIKitUI AIKitIntegration AIKitAgent; do
+            echo "::group::swift build --target $target"
+            swift build --target "$target"
+            echo "::endgroup::"
+          done

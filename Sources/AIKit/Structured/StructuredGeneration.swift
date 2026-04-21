@@ -14,10 +14,13 @@ public struct StructuredRequest<T: Decodable & Sendable>: Sendable {
     }
 
     public func systemPrompt() -> String {
-        Self.systemPrompt(schema: schema, examples: examples)
+        StructuredPromptBuilder.systemPrompt(schema: schema, examples: examples)
     }
+}
 
-    /// Build the schema-anchored system prompt without constructing a `StructuredRequest`.
+/// Schema-anchored system-prompt builder that is not bound to a specific
+/// generic parameter. Lets callers build the prompt without naming `T`.
+public enum StructuredPromptBuilder {
     public static func systemPrompt(
         schema: JSONSchema,
         examples: [String] = []

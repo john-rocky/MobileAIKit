@@ -208,15 +208,21 @@ private final class LocationPermissionProbe: NSObject, @unchecked Sendable, CLLo
 
     func requestWhenInUse() async -> Bool {
         let status = manager.authorizationStatus
-        switch status {
-        case .authorizedAlways, .authorizedWhenInUse: return true
-        case .notDetermined:
-            return await withCheckedContinuation { cont in
-                lock.lock(); continuation = cont; lock.unlock()
-                manager.requestWhenInUseAuthorization()
-            }
-        default: return false
+        if Self.isAuthorized(status) { return true }
+        guard status == .notDetermined else { return false }
+        #if os(macOS)
+        // macOS CLLocationManager has no "when in use" tier; fall back to the
+        // always prompt (delegate still fires on status change).
+        return await withCheckedContinuation { cont in
+            lock.lock(); continuation = cont; lock.unlock()
+            manager.requestAlwaysAuthorization()
         }
+        #else
+        return await withCheckedContinuation { cont in
+            lock.lock(); continuation = cont; lock.unlock()
+            manager.requestWhenInUseAuthorization()
+        }
+        #endif
     }
 
     func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
@@ -226,7 +232,15 @@ private final class LocationPermissionProbe: NSObject, @unchecked Sendable, CLLo
         let cont = continuation
         continuation = nil
         lock.unlock()
-        cont?.resume(returning: status == .authorizedAlways || status == .authorizedWhenInUse)
+        cont?.resume(returning: Self.isAuthorized(status))
+    }
+
+    private static func isAuthorized(_ status: CLAuthorizationStatus) -> Bool {
+        #if os(macOS)
+        return status == .authorizedAlways
+        #else
+        return status == .authorizedAlways || status == .authorizedWhenInUse
+        #endif
     }
 }
 #endif

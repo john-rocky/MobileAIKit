@@ -1,5 +1,6 @@
 import Foundation
 import AIKit
+import struct AIKit.Message
 import MLX
 import MLXLLM
 import MLXLMCommon
@@ -36,8 +37,7 @@ public final class MLXBackend: AIBackend, @unchecked Sendable {
     }
 
     public func load() async throws {
-        lock.lock(); let existing = container; lock.unlock()
-        if existing != nil { return }
+        if lock.withLock({ container }) != nil { return }
         do {
             let factory = LLMModelFactory.shared
             let configuration = ModelConfiguration(id: hubRepoId)
@@ -46,16 +46,14 @@ public final class MLXBackend: AIBackend, @unchecked Sendable {
                 hub: HubApi(),
                 configuration: configuration
             ) { _ in }
-            lock.lock()
-            self.container = loaded
-            lock.unlock()
+            lock.withLock { self.container = loaded }
         } catch {
             throw AIError.modelLoadFailed(error.localizedDescription)
         }
     }
 
     public func unload() async {
-        lock.lock(); container = nil; lock.unlock()
+        lock.withLock { container = nil }
         MLX.GPU.clearCache()
     }
 
@@ -102,11 +100,14 @@ public final class MLXBackend: AIBackend, @unchecked Sendable {
                     try await self.load()
                     guard let container = self.container else { throw AIError.modelNotLoaded }
                     let input = try UserInput(chat: Self.mapChat(messages))
-                    var params = GenerateParameters()
-                    params.maxTokens = config.maxTokens
-                    params.temperature = config.temperature
-                    params.topP = config.topP
-                    params.repetitionPenalty = config.repetitionPenalty
+                    let params: GenerateParameters = {
+                        var p = GenerateParameters()
+                        p.maxTokens = config.maxTokens
+                        p.temperature = config.temperature
+                        p.topP = config.topP
+                        p.repetitionPenalty = config.repetitionPenalty
+                        return p
+                    }()
                     try await container.perform { context in
                         let prepared = try await context.processor.prepare(input: input)
                         let generation = try MLXLMCommon.generate(

@@ -1,5 +1,9 @@
 import Foundation
 
+fileprivate struct ClassifyOut: Decodable, Sendable {
+    let label: String
+}
+
 /// Top-level Swift-first entry point for running local AI features.
 ///
 /// `AIKit` exposes simple one-shot helpers (``chat(_:backend:systemPrompt:config:)``,
@@ -83,7 +87,7 @@ public enum AIKit {
         instruction: String = "Extract the requested fields.",
         backend: any AIBackend
     ) async throws -> T {
-        let systemPrompt = StructuredRequest.systemPrompt(schema: schema)
+        let systemPrompt = StructuredPromptBuilder.systemPrompt(schema: schema)
         let messages: [Message] = [
             .system(systemPrompt),
             .user("\(instruction)\n\n\(text)")
@@ -157,8 +161,7 @@ public enum AIKit {
             properties: ["label": .string(enumValues: allCases)],
             required: ["label"]
         )
-        struct Out: Decodable { let label: String }
-        let out: Out = try await extract(Out.self, from: text, schema: schema, instruction: instruction, backend: backend)
+        let out: ClassifyOut = try await extract(ClassifyOut.self, from: text, schema: schema, instruction: instruction, backend: backend)
         guard let value = Label(rawValue: out.label) else {
             throw AIError.schemaMismatch("Unknown label '\(out.label)'")
         }

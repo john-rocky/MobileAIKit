@@ -17,7 +17,7 @@ public struct AIAttachmentDropZone<Label: View>: View {
     public var body: some View {
         label()
             .padding()
-            .background(isTargeted ? .tint.opacity(0.15) : .secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 16))
+            .background(isTargeted ? Color.accentColor.opacity(0.15) : Color.secondary.opacity(0.1), in: RoundedRectangle(cornerRadius: 16))
             .dropDestination(for: URL.self) { urls, _ in
                 for url in urls {
                     let type = UTType(filenameExtension: url.pathExtension) ?? .data

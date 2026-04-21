@@ -9,7 +9,11 @@ public actor DatabaseMemoryStore: MemoryStoreProtocol {
     public var maxShortTerm: Int
     public var summarizer: (@Sendable ([MemoryRecord]) async throws -> String)?
 
-    private var db: OpaquePointer?
+    // nonisolated(unsafe): OpaquePointer isn't Sendable, so strict concurrency
+    // rejects both the cross-actor store in init and the read in deinit. By the
+    // time deinit runs no other context holds a reference to this actor, so the
+    // access is safe in practice — we take ownership back for the close call.
+    nonisolated(unsafe) private var db: OpaquePointer?
 
     public init(
         fileURL: URL? = nil,
@@ -33,29 +37,30 @@ public actor DatabaseMemoryStore: MemoryStoreProtocol {
         self.embedder = embedder
         self.maxShortTerm = maxShortTerm
         self.summarizer = summarizer
-        try open()
-        try migrate()
+        let handle = try Self.openDatabase(at: self.fileURL)
+        try Self.migrateDatabase(handle)
+        self.db = handle
     }
 
     deinit {
         if let db { sqlite3_close(db) }
     }
 
-    private func open() throws {
+    private nonisolated static func openDatabase(at url: URL) throws -> OpaquePointer {
         var handle: OpaquePointer?
         let flags = SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | SQLITE_OPEN_FULLMUTEX
-        let code = fileURL.path.withCString { cstr in
+        let code = url.path.withCString { cstr in
             sqlite3_open_v2(cstr, &handle, flags, nil)
         }
-        if code != SQLITE_OK {
+        guard code == SQLITE_OK, let handle else {
             throw AIError.resourceUnavailable("sqlite open failed: \(code)")
         }
-        self.db = handle
-        sqlite3_exec(db, "PRAGMA journal_mode=WAL;", nil, nil, nil)
-        sqlite3_exec(db, "PRAGMA synchronous=NORMAL;", nil, nil, nil)
+        sqlite3_exec(handle, "PRAGMA journal_mode=WAL;", nil, nil, nil)
+        sqlite3_exec(handle, "PRAGMA synchronous=NORMAL;", nil, nil, nil)
+        return handle
     }
 
-    private func migrate() throws {
+    private nonisolated static func migrateDatabase(_ db: OpaquePointer) throws {
         let sql = """
         CREATE TABLE IF NOT EXISTS memory_records (
             id TEXT PRIMARY KEY,

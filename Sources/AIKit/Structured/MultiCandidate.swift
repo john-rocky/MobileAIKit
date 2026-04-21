@@ -35,7 +35,7 @@ public enum MultiCandidate {
         messages: [Message],
         config: GenerationConfig = .default,
         n: Int,
-        scorer: @Sendable (String) async throws -> Double
+        scorer: @escaping @Sendable (String) async throws -> Double
     ) async throws -> Candidate {
         precondition(n > 0)
         let results = try await withThrowingTaskGroup(of: Candidate.self) { group in

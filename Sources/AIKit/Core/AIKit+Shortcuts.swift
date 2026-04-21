@@ -135,7 +135,7 @@ public extension AIKit {
         guard backend.info.capabilities.contains(.vision) else {
             throw AIError.unsupportedCapability("vision")
         }
-        let systemPrompt = StructuredRequest.systemPrompt(schema: schema)
+        let systemPrompt = StructuredPromptBuilder.systemPrompt(schema: schema)
         let base: [Message] = [
             .system(systemPrompt),
             .user(instruction, attachments: [.image(image)])
@@ -156,7 +156,7 @@ public extension AIKit {
         guard backend.info.capabilities.contains(.vision) else {
             throw AIError.unsupportedCapability("vision")
         }
-        let systemPrompt = StructuredRequest.systemPrompt(schema: schema)
+        let systemPrompt = StructuredPromptBuilder.systemPrompt(schema: schema)
         let atts = images.map { Attachment.image($0) }
         let base: [Message] = [
             .system(systemPrompt),
@@ -244,7 +244,7 @@ public extension AIKit {
         guard backend.info.capabilities.contains(.vision) else {
             throw AIError.unsupportedCapability("vision")
         }
-        let systemPrompt = StructuredRequest.systemPrompt(schema: schema)
+        let systemPrompt = StructuredPromptBuilder.systemPrompt(schema: schema)
         let base: [Message] = [
             .system(systemPrompt),
             .user(instruction, attachments: [.image(image)])

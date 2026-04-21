@@ -13,10 +13,10 @@ public struct ChatTemplate: Sendable, Hashable {
     }
 
     public let style: Style
-    public let systemWrapper: (String) -> String
-    public let userWrapper: (String) -> String
-    public let assistantWrapper: (String) -> String
-    public let toolWrapper: (String, String) -> String
+    public let systemWrapper: @Sendable (String) -> String
+    public let userWrapper: @Sendable (String) -> String
+    public let assistantWrapper: @Sendable (String) -> String
+    public let toolWrapper: @Sendable (String, String) -> String
     public let stopSequences: [String]
 
     public static func == (lhs: ChatTemplate, rhs: ChatTemplate) -> Bool {
@@ -27,10 +27,10 @@ public struct ChatTemplate: Sendable, Hashable {
 
     public init(
         style: Style,
-        systemWrapper: @escaping (String) -> String,
-        userWrapper: @escaping (String) -> String,
-        assistantWrapper: @escaping (String) -> String,
-        toolWrapper: @escaping (String, String) -> String,
+        systemWrapper: @escaping @Sendable (String) -> String,
+        userWrapper: @escaping @Sendable (String) -> String,
+        assistantWrapper: @escaping @Sendable (String) -> String,
+        toolWrapper: @escaping @Sendable (String, String) -> String,
         stopSequences: [String]
     ) {
         self.style = style

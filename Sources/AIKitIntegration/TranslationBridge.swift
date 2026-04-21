@@ -1,7 +1,7 @@
 import Foundation
 import AIKit
 #if canImport(Translation)
-import Translation
+@preconcurrency import Translation
 import SwiftUI
 #endif
 

@@ -45,7 +45,10 @@ public final class EventKitBridge: @unchecked Sendable {
             let notes: String?
         }
         struct Out: Encodable { let eventId: String }
-        return TypedTool(spec: spec) { [store] (args: Args) async throws -> Out in
+        return TypedTool(spec: spec) { (args: Args) async throws -> Out in
+            // EKEventStore is not Sendable; instantiate a fresh one per call so
+            // the @Sendable closure doesn't capture shared mutable state.
+            let store = EKEventStore()
             let event = EKEvent(eventStore: store)
             event.title = args.title
             event.startDate = try Self.parseDate(args.start)
@@ -76,7 +79,8 @@ public final class EventKitBridge: @unchecked Sendable {
             let id: String; let title: String; let start: String; let end: String
             let location: String?
         }
-        return TypedTool(spec: spec) { [store] (args: Args) async throws -> [EventOut] in
+        return TypedTool(spec: spec) { (args: Args) async throws -> [EventOut] in
+            let store = EKEventStore()
             let start = try Self.parseDate(args.start)
             let end = try Self.parseDate(args.end)
             let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)

@@ -21,7 +21,9 @@ public extension Embedder {
 }
 
 #if canImport(NaturalLanguage)
-public struct NLEmbedder: Embedder {
+public struct NLEmbedder: Embedder, @unchecked Sendable {
+    // @unchecked: NLEmbedding is a reference type but its `vector(for:)` and
+    // `dimension` are thread-safe per Apple's NaturalLanguage documentation.
     public let language: NLLanguage
     public let dimension: Int
     private let embedding: NLEmbedding
