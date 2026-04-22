@@ -35,7 +35,7 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
         self.info = BackendInfo(
             name: name,
             version: "1.0",
-            capabilities: [.textGeneration, .streaming, .vision, .audioInput, .chatTemplate, .statefulSession],
+            capabilities: [.textGeneration, .streaming, .vision, .audioInput, .chatTemplate, .statefulSession, .toolCalling, .structuredOutput],
             contextLength: 8192,
             preferredDevice: "ANE"
         )
@@ -142,7 +142,8 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
     ) async throws -> GenerationResult {
         try await load()
         guard let llm = llm else { throw AIError.modelNotLoaded }
-        let (mapped, image, audio) = try await Self.prepare(messages)
+        let augmented = ToolPromptInjector.inject(tools: tools, into: messages)
+        let (mapped, image, audio) = try await Self.prepare(augmented)
         let start = Date()
         let output = try await llm.generate(
             mapped,
@@ -151,10 +152,12 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
             maxTokens: config.maxTokens
         )
         let elapsed = Date().timeIntervalSince(start)
+        let (cleanedText, parsedCalls) = ToolPromptInjector.parse(output: output, tools: tools)
+        let finish: FinishReason = parsedCalls.isEmpty ? .stop : .toolCalls
         return GenerationResult(
-            message: .assistant(output),
+            message: .assistant(cleanedText, toolCalls: parsedCalls),
             usage: GenerationUsage(decodeTimeSeconds: elapsed),
-            finishReason: .stop
+            finishReason: finish
         )
     }
 
@@ -168,8 +171,9 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
                 do {
                     try await self.load()
                     guard let llm = self.llm else { throw AIError.modelNotLoaded }
-                    let (mapped, image, audio) = try await Self.prepare(messages)
-                    let video = Self.firstVideoURL(in: messages)
+                    let augmented = ToolPromptInjector.inject(tools: tools, into: messages)
+                    let (mapped, image, audio) = try await Self.prepare(augmented)
+                    let video = Self.firstVideoURL(in: augmented)
                     let stream: AsyncStream<String>
                     if let video {
                         stream = try await llm.stream(
@@ -185,11 +189,30 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
                             maxTokens: config.maxTokens
                         )
                     }
+                    var buffered = ""
+                    let hasTools = !tools.isEmpty
                     for await piece in stream {
                         if Task.isCancelled { break }
-                        continuation.yield(GenerationChunk(delta: piece))
+                        if hasTools {
+                            // Hold output back so we don't leak a tool-call JSON
+                            // prefix (e.g. `{"tool_calls":`) to the caller as chat text.
+                            buffered += piece
+                        } else {
+                            continuation.yield(GenerationChunk(delta: piece))
+                        }
                     }
-                    continuation.yield(GenerationChunk(finished: true, finishReason: .stop))
+                    if hasTools {
+                        let (cleanedText, parsedCalls) = ToolPromptInjector.parse(output: buffered, tools: tools)
+                        if !cleanedText.isEmpty {
+                            continuation.yield(GenerationChunk(delta: cleanedText))
+                        }
+                        for call in parsedCalls {
+                            continuation.yield(GenerationChunk(toolCall: call))
+                        }
+                        continuation.yield(GenerationChunk(finished: true, finishReason: parsedCalls.isEmpty ? .stop : .toolCalls))
+                    } else {
+                        continuation.yield(GenerationChunk(finished: true, finishReason: .stop))
+                    }
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)

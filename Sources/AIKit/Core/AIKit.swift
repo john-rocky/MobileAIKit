@@ -169,6 +169,12 @@ public enum AIKit {
     }
 
     /// Returns an embedding vector for `text` if the backend supports ``BackendCapabilities/embeddings``.
+    ///
+    /// The bundled `CoreMLLLMBackend` does **not** support embeddings — it is a text
+    /// generator, not an embedder. For RAG / similarity search, construct a dedicated
+    /// `Embedder` (e.g. `HashingEmbedder` for zero-setup, or `NLEmbedder` for higher
+    /// quality) and pass it to `RAGPipeline` / `DatabaseMemoryStore` directly rather
+    /// than routing through the backend.
     public static func embed(_ text: String, backend: any AIBackend) async throws -> [Float] {
         try await backend.embed(text)
     }

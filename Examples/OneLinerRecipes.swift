@@ -3,6 +3,7 @@ import AIKit
 import AIKitCoreMLLLM
 import AIKitVision
 import AIKitIntegration
+import AIKitSpeech
 #if canImport(UIKit)
 import UIKit
 #endif
