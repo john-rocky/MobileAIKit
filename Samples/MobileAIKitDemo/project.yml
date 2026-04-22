@@ -33,7 +33,7 @@ targets:
       - package: LocalAIKit
         product: AIKitUI
       - package: LocalAIKit
-        product: AIKitLlamaCpp
+        product: AIKitCoreMLLLM
       - package: LocalAIKit
         product: AIKitSpeech
       - package: LocalAIKit

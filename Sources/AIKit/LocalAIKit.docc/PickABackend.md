@@ -1,62 +1,34 @@
 # Pick a Backend
 
-AIKit ships five backends. Pick the one that matches your device / model file.
+AIKit currently ships one runtime: `CoreMLLLMBackend`, a thin wrapper around
+[john-rocky/coreml-llm](https://github.com/john-rocky/coreml-llm). It targets
+the Apple Neural Engine and supports multimodal (text + image + audio) input.
 
-## Apple Foundation Models (iOS 26+)
+Other runtimes (MLX, llama.cpp, Foundation Models, generic CoreML) are out of
+scope right now so the kit stays small and the dependency graph stays clean.
+Bring your own by conforming to ``AIBackend`` if you need one.
 
-Runs Apple's built-in on-device model. No download, no model file.
-
-```swift
-import AIKitFoundationModels
-let backend = FoundationModelsBackend(instructions: "Be concise.")
-```
-
-## CoreML-LLM (ANE-optimised)
-
-[john-rocky/coreml-llm](https://github.com/john-rocky/coreml-llm) — best Neural Engine throughput for supported models, multimodal.
+## CoreML-LLM (default)
 
 ```swift
 import AIKitCoreMLLLM
+
 let backend = CoreMLLLMBackend(model: .gemma4e2b)
+try await backend.load()
 ```
 
-## MLX (Apple Silicon)
-
-Uses `mlx-swift-examples`. Great on macOS/iPadOS, supports LLM and VLM.
-
-```swift
-import AIKitMLX
-let backend = MLXBackend(modelId: "qwen-0.5b", hubRepoId: "mlx-community/Qwen2.5-0.5B-Instruct-4bit")
-```
-
-## llama.cpp (GGUF)
-
-Widest model catalogue. Metal-accelerated.
-
-```swift
-import AIKitLlamaCpp
-let backend = LlamaCppBackend(modelPath: ggufURL, template: .chatML)
-```
-
-## Generic CoreML
-
-Bring your own `.mlpackage`/`.mlmodelc` with a Hugging Face tokenizer.
-
-```swift
-import AIKitCoreML
-let backend = CoreMLBackend(configuration: .init(
-    modelURL: modelURL,
-    tokenizerRepoId: "Qwen/Qwen2.5-0.5B-Instruct"
-))
-```
+Hold the backend once (e.g. via ``AIBackendHost``) — creating a new instance
+on every call will reload the model.
 
 ## Router with fallback
 
+`BackendRouter` can still be used if you construct multiple `AIBackend`
+instances yourself (e.g. two different CoreML-LLM models):
+
 ```swift
 let router = BackendRouter(backends: [
-    FoundationModelsBackend(),
     CoreMLLLMBackend(model: .gemma4e2b),
-    LlamaCppBackend(modelPath: ggufURL)
+    CoreMLLLMBackend(model: .gemma4e4b)
 ])
 ```
 

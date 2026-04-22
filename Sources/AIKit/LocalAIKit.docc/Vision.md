@@ -1,6 +1,7 @@
 # Vision
 
-OCR and image analysis via Vision framework, plus LLM vision through VLM backends.
+OCR and image analysis via the Vision framework, plus LLM vision through
+``CoreMLLLMBackend`` (multimodal via Neural Engine).
 
 ## OCR
 
@@ -17,10 +18,8 @@ let result = try await AIKit.imageAnalysis(attachment)
 ## VLM (vision-language)
 
 ```swift
-let answer = try await AIKit.analyzeImage(attachment, backend: MLXVLMBackend(
-    modelId: "qwen-vl",
-    hubRepoId: "mlx-community/Qwen2-VL-2B-Instruct-4bit"
-))
+let backend = CoreMLLLMBackend(model: .gemma4e2b)
+let answer = try await AIKit.analyzeImage(attachment, backend: backend)
 ```
 
 ## Live data scanner (iOS)
@@ -29,11 +28,4 @@ let answer = try await AIKit.analyzeImage(attachment, backend: MLXVLMBackend(
 AIDataScannerView(recognizedDataTypes: [.text(), .barcode()]) { value in
     print(value)
 }
-```
-
-## CoreML classifier as tool
-
-```swift
-let classifier = try CoreMLClassifierTool.load(name: "FoodClassifier", at: mlmodelURL)
-await registry.register(classifier.asTool())
 ```

@@ -22,20 +22,6 @@ xcodegen && open <Sample>.xcodeproj
 
 ## What to change
 
-All samples default to `CoreMLLLMBackend(model: .gemma4e2b)`. To swap the runtime, edit the `bootstrap`/`boot` method in the sample's `App.swift`:
-
-```swift
-// Fallback to llama.cpp GGUF
-import AIKitLlamaCpp
-let backend = LlamaCppBackend(modelPath: ggufURL, template: .auto(name: "gemma-4"))
-
-// MLX on Apple Silicon
-import AIKitMLX
-let backend = MLXBackend(modelId: "mlx-gemma-4-e4b-it", hubRepoId: "mlx-community/gemma-4-e4b-it-4bit")
-
-// iOS 26+ built-in
-import AIKitFoundationModels
-let backend = FoundationModelsBackend(instructions: "Be concise.")
-```
+All samples default to `CoreMLLLMBackend(model: .gemma4e2b)`. To try a different model, swap for another `CoreMLLLMBackend.ModelInfo` — see `CoreMLLLMBackend.availableModels` for the built-in list.
 
 All voice features use Apple's `SFSpeechRecognizer` / `AVSpeechSynthesizer` under the hood, so nothing leaves the device.

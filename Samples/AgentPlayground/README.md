@@ -42,20 +42,8 @@ First launch downloads Gemma 4 E2B onto the device (~2 GB). Run on an iPhone wit
 
 The agent mixes built-in tools (weather, maps, web, camera) and app tools (`add_todo`, `roll_dice`) in the same turn.
 
-## Swapping the backend
+## Trying a different model
 
-`App.swift` boots `CoreMLLLMBackend(model: .gemma4e2b)`. Replace with any other `AIBackend`:
-
-```swift
-// Apple Foundation Models (iOS 26+)
-import AIKitFoundationModels
-let backend = FoundationModelsBackend(instructions: "Be concise.")
-
-// llama.cpp GGUF
-import AIKitLlamaCpp
-let backend = LlamaCppBackend(modelPath: ggufURL, template: .auto(name: "gemma-4"))
-
-// MLX on Apple Silicon
-import AIKitMLX
-let backend = MLXBackend(modelId: "mlx-gemma-4-e4b-it", hubRepoId: "mlx-community/gemma-4-e4b-it-4bit")
-```
+`App.swift` boots `CoreMLLLMBackend(model: .gemma4e2b)`. Pass a different
+`CoreMLLLMBackend.ModelInfo` (see `CoreMLLLMBackend.availableModels`) to try
+another size, e.g. Gemma 4 E4B for better quality on Pro devices.

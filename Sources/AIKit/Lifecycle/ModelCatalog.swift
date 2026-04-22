@@ -2,13 +2,12 @@ import Foundation
 
 /// Curated list of on-device-friendly local models with URLs that `HFModelDownloader` can fetch.
 ///
-/// The catalog prioritises recent (2025–2026) small-to-mid models that fit within
-/// an iPhone's RAM budget. All GGUF entries are Q4_K_M quantisations; MLX entries
-/// point at `mlx-community` 4-bit packs. Bring your own `ModelDescriptor` for
-/// anything not listed.
+/// Entries are Q4_K_M GGUF quantisations — useful as metadata for your own
+/// runtime integration. LocalAIKit itself only ships the `CoreMLLLMBackend`;
+/// see ``CoreMLLLMBackend/availableModels`` for the built-in CoreML-LLM catalog.
 public enum ModelCatalog {
 
-    // MARK: GGUF (llama.cpp)
+    // MARK: GGUF metadata
 
     /// Gemma 4 E2B Instruct (Apr 2026). Effective 2B via Per-Layer Embeddings.
     /// Multimodal: text + image + audio inputs on-device.
@@ -125,7 +124,7 @@ public enum ModelCatalog {
         minRAMBytes: 2_000_000_000
     )
 
-    /// Gemma 3 4B Instruct (Mar 2025). Multimodal-capable weights (text here; use MLX VLM for vision).
+    /// Gemma 3 4B Instruct (Mar 2025). Multimodal-capable weights.
     public static let gemma3_4B_Q4 = ModelDescriptor(
         name: "gemma-3-4b-it",
         version: "q4_k_m",
@@ -195,107 +194,6 @@ public enum ModelCatalog {
         minRAMBytes: 2_000_000_000
     )
 
-    // MARK: MLX 4-bit (mlx-swift-examples)
-
-    public static let mlx_qwen3_0_6B = ModelDescriptor(
-        name: "mlx-qwen3-0.6b", version: "4bit",
-        format: .mlx, contextLength: 32_768, files: [],
-        displayName: "MLX Qwen 3 0.6B 4bit", minRAMBytes: 1_000_000_000
-    )
-
-    public static let mlx_qwen3_1_7B = ModelDescriptor(
-        name: "mlx-qwen3-1.7b", version: "4bit",
-        format: .mlx, contextLength: 32_768, files: [],
-        displayName: "MLX Qwen 3 1.7B 4bit", minRAMBytes: 2_500_000_000
-    )
-
-    public static let mlx_qwen3_4B = ModelDescriptor(
-        name: "mlx-qwen3-4b", version: "4bit",
-        format: .mlx, contextLength: 32_768, files: [],
-        displayName: "MLX Qwen 3 4B 4bit", minRAMBytes: 5_000_000_000
-    )
-
-    public static let mlx_qwen3_8B = ModelDescriptor(
-        name: "mlx-qwen3-8b", version: "4bit",
-        format: .mlx, contextLength: 32_768, files: [],
-        displayName: "MLX Qwen 3 8B 4bit", minRAMBytes: 9_000_000_000
-    )
-
-    public static let mlx_gemma3_1B = ModelDescriptor(
-        name: "mlx-gemma-3-1b-it", version: "4bit",
-        format: .mlx, contextLength: 32_768, files: [],
-        displayName: "MLX Gemma 3 1B 4bit", minRAMBytes: 2_000_000_000
-    )
-
-    public static let mlx_gemma3_4B = ModelDescriptor(
-        name: "mlx-gemma-3-4b-it", version: "4bit",
-        format: .mlx, modality: .vision, contextLength: 131_072, files: [],
-        displayName: "MLX Gemma 3 4B IT 4bit (multimodal)", minRAMBytes: 5_000_000_000
-    )
-
-    public static let mlx_gemma4_e2b = ModelDescriptor(
-        name: "mlx-gemma-4-e2b-it", version: "4bit",
-        format: .mlx, modality: .vision, contextLength: 131_072, files: [],
-        displayName: "MLX Gemma 4 E2B IT 4bit (multimodal)", minRAMBytes: 2_500_000_000
-    )
-
-    public static let mlx_gemma4_e4b = ModelDescriptor(
-        name: "mlx-gemma-4-e4b-it", version: "4bit",
-        format: .mlx, modality: .vision, contextLength: 131_072, files: [],
-        displayName: "MLX Gemma 4 E4B IT 4bit (multimodal)", minRAMBytes: 5_000_000_000
-    )
-
-    public static let mlx_gemma4_26b_moe = ModelDescriptor(
-        name: "mlx-gemma-4-26b-moe-it", version: "4bit",
-        format: .mlx, contextLength: 131_072, files: [],
-        displayName: "MLX Gemma 4 26B MoE IT 4bit", minRAMBytes: 20_000_000_000
-    )
-
-    public static let mlx_gemma4_31b_dense = ModelDescriptor(
-        name: "mlx-gemma-4-31b-it", version: "4bit",
-        format: .mlx, contextLength: 131_072, files: [],
-        displayName: "MLX Gemma 4 31B Dense IT 4bit", minRAMBytes: 24_000_000_000
-    )
-
-    public static let mlx_phi4_mini = ModelDescriptor(
-        name: "mlx-phi-4-mini-instruct", version: "4bit",
-        format: .mlx, contextLength: 131_072, files: [],
-        displayName: "MLX Phi-4 mini 4bit", minRAMBytes: 4_500_000_000
-    )
-
-    public static let mlx_smollm3_3B = ModelDescriptor(
-        name: "mlx-smollm3-3b", version: "4bit",
-        format: .mlx, contextLength: 65_536, files: [],
-        displayName: "MLX SmolLM3 3B 4bit", minRAMBytes: 4_000_000_000
-    )
-
-    /// Legacy — Llama 3.2 1B MLX for broad device support.
-    public static let mlx_llama3_2_1B = ModelDescriptor(
-        name: "mlx-llama-3.2-1b-instruct", version: "4bit",
-        format: .mlx, contextLength: 131_072, files: [],
-        displayName: "MLX Llama 3.2 1B (legacy)", minRAMBytes: 2_000_000_000
-    )
-
-    // MARK: MLX Vision (VLM)
-
-    public static let mlx_qwen25_vl_3B = ModelDescriptor(
-        name: "mlx-qwen2.5-vl-3b-instruct", version: "4bit",
-        format: .mlx, modality: .vision, contextLength: 32_768, files: [],
-        displayName: "MLX Qwen 2.5 VL 3B 4bit", minRAMBytes: 4_500_000_000
-    )
-
-    public static let mlx_qwen25_vl_7B = ModelDescriptor(
-        name: "mlx-qwen2.5-vl-7b-instruct", version: "4bit",
-        format: .mlx, modality: .vision, contextLength: 32_768, files: [],
-        displayName: "MLX Qwen 2.5 VL 7B 4bit", minRAMBytes: 8_000_000_000
-    )
-
-    public static let mlx_phi4_multimodal = ModelDescriptor(
-        name: "mlx-phi-4-multimodal-instruct", version: "4bit",
-        format: .mlx, modality: .vision, contextLength: 131_072, files: [],
-        displayName: "MLX Phi-4 Multimodal 4bit", minRAMBytes: 7_000_000_000
-    )
-
     // MARK: Grouped lists
 
     public static let allText: [ModelDescriptor] = [
@@ -311,59 +209,17 @@ public enum ModelCatalog {
         phi4_mini_Q4,
         smollm3_3B_Q4,
         llama3_2_1B_Q4,
-        mistralSmall3_24B_Q4,
-        mlx_gemma4_e2b,
-        mlx_gemma4_e4b,
-        mlx_gemma4_26b_moe,
-        mlx_gemma4_31b_dense,
-        mlx_qwen3_0_6B,
-        mlx_qwen3_1_7B,
-        mlx_qwen3_4B,
-        mlx_qwen3_8B,
-        mlx_gemma3_1B,
-        mlx_gemma3_4B,
-        mlx_phi4_mini,
-        mlx_smollm3_3B,
-        mlx_llama3_2_1B
+        mistralSmall3_24B_Q4
     ]
 
     public static let allVision: [ModelDescriptor] = [
         gemma4_e2b_Q4,
-        gemma4_e4b_Q4,
-        mlx_gemma4_e2b,
-        mlx_gemma4_e4b,
-        mlx_qwen25_vl_3B,
-        mlx_qwen25_vl_7B,
-        mlx_phi4_multimodal,
-        mlx_gemma3_4B
+        gemma4_e4b_Q4
     ]
 
     public static let all: [ModelDescriptor] = allText + allVision
 
-    /// Maps an MLX descriptor to the `mlx-community` repo id used by ``MLXBackend``.
-    public static func mlxHubId(for descriptor: ModelDescriptor) -> String? {
-        switch descriptor.name {
-        case "mlx-gemma-4-e2b-it":           return "mlx-community/gemma-4-e2b-it-4bit"
-        case "mlx-gemma-4-e4b-it":           return "mlx-community/gemma-4-e4b-it-4bit"
-        case "mlx-gemma-4-26b-moe-it":       return "mlx-community/gemma-4-26b-moe-it-4bit"
-        case "mlx-gemma-4-31b-it":           return "mlx-community/gemma-4-31b-it-4bit"
-        case "mlx-qwen3-0.6b":               return "mlx-community/Qwen3-0.6B-4bit"
-        case "mlx-qwen3-1.7b":               return "mlx-community/Qwen3-1.7B-4bit"
-        case "mlx-qwen3-4b":                 return "mlx-community/Qwen3-4B-4bit"
-        case "mlx-qwen3-8b":                 return "mlx-community/Qwen3-8B-4bit"
-        case "mlx-gemma-3-1b-it":            return "mlx-community/gemma-3-1b-it-4bit"
-        case "mlx-gemma-3-4b-it":            return "mlx-community/gemma-3-4b-it-4bit"
-        case "mlx-phi-4-mini-instruct":      return "mlx-community/Phi-4-mini-instruct-4bit"
-        case "mlx-smollm3-3b":               return "mlx-community/SmolLM3-3B-4bit"
-        case "mlx-llama-3.2-1b-instruct":    return "mlx-community/Llama-3.2-1B-Instruct-4bit"
-        case "mlx-qwen2.5-vl-3b-instruct":   return "mlx-community/Qwen2.5-VL-3B-Instruct-4bit"
-        case "mlx-qwen2.5-vl-7b-instruct":   return "mlx-community/Qwen2.5-VL-7B-Instruct-4bit"
-        case "mlx-phi-4-multimodal-instruct": return "mlx-community/Phi-4-multimodal-instruct-4bit"
-        default: return nil
-        }
-    }
-
-    /// Chat template hint aligned with model family. Pass to `LlamaCppBackend(template:)`.
+    /// Chat template hint aligned with model family.
     public static func chatTemplate(for descriptor: ModelDescriptor) -> ChatTemplate {
         ChatTemplate.auto(name: descriptor.name)
     }
