@@ -129,6 +129,11 @@ final class CameraModel: @unchecked Sendable {
 
         try await withCheckedThrowingContinuation { (cont: CheckedContinuation<Void, Error>) in
             queue.async { [self] in
+                if !session.inputs.isEmpty {
+                    if !session.isRunning { session.startRunning() }
+                    cont.resume()
+                    return
+                }
                 session.beginConfiguration()
                 if session.canSetSessionPreset(.photo) {
                     session.sessionPreset = .photo
@@ -148,8 +153,14 @@ final class CameraModel: @unchecked Sendable {
     }
 
     func stop() {
-        queue.async { [session] in
+        queue.async { [self] in
             if session.isRunning { session.stopRunning() }
+            session.beginConfiguration()
+            if let input = currentInput {
+                session.removeInput(input)
+            }
+            session.commitConfiguration()
+            currentInput = nil
         }
     }
 
