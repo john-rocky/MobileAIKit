@@ -1,4 +1,5 @@
 import Foundation
+import CoreGraphics
 import AIKit
 import struct AIKit.Message
 import MLX
@@ -90,11 +91,9 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
     public let info: BackendInfo
     public let modelId: String
     public let hubRepoId: String
-    /// MLX cache limit in bytes applied to both `MLXLMCommon.Memory.cacheLimit`
-    /// (activation/scratch reuse pool — the one that actually constrains VLM
-    /// forward passes) and `MLX.GPU.cacheLimit` (lower-level Metal buffer cache).
-    /// Defaults to 20 MB, matching the upstream `MLXChatExample` — counterintuitively
-    /// small, but aggressive buffer reuse is what prevents VLM OOM on iOS.
+    /// MLX Metal buffer cache limit applied via `MLX.GPU.set(cacheLimit:)`.
+    /// Defaults to 20 MB — counterintuitively small, but aggressive buffer
+    /// reuse is what prevents VLM OOM on iOS (matches upstream MLXChatExample).
     public var gpuCacheLimitBytes: Int
     /// Target image size handed to the vision tower. Must match the model's
     /// positional embedding grid or the forward pass crashes with
@@ -225,11 +224,7 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
         MLX.GPU.clearCache()
     }
 
-    /// Apply cache limits to both the activation pool (`MLXLMCommon.Memory.cacheLimit`)
-    /// and the Metal buffer cache (`MLX.GPU.cacheLimit`). The former is what actually
-    /// keeps VLM forward passes from exhausting iOS's app-jetsam budget.
     private func applyCacheLimits() {
-        MLXLMCommon.Memory.cacheLimit = gpuCacheLimitBytes
         MLX.GPU.set(cacheLimit: gpuCacheLimitBytes)
     }
 
@@ -263,15 +258,10 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
                     try await self.load()
                     guard let container = self.container else { throw AIError.modelNotLoaded }
                     let chat = try await Self.mapChat(messages)
-                    let input: UserInput
-                    if let size = self.recommendedInputSize {
-                        input = UserInput(
-                            chat: chat,
-                            processing: .init(resize: size)
-                        )
-                    } else {
-                        input = try UserInput(chat: chat)
-                    }
+                    let input = UserInput(
+                        chat: chat,
+                        processing: .init(resize: self.recommendedInputSize)
+                    )
                     let params: GenerateParameters = {
                         var p = GenerateParameters()
                         p.maxTokens = config.maxTokens
