@@ -8,8 +8,8 @@ struct RAGDemoView: View {
     @State private var pipeline: RAGPipeline?
     @State private var isReady = false
     @State private var noteText: String = """
-    LocalAIKit is a Swift toolkit that wraps CoreML-LLM, MLX, llama.cpp and
-    Apple Foundation Models behind a single AIBackend protocol.
+    LocalAIKit is a Swift toolkit that wraps CoreML-LLM behind the
+    AIBackend protocol, targeting Apple Neural Engine on-device.
 
     It provides long-term memory, RAG, tools, and SwiftUI prefabs so that
     developers can build on-device AI apps in a few lines of Swift.
