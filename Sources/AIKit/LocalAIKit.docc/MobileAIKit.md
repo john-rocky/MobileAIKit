@@ -4,10 +4,11 @@ Swift-first toolkit for shipping local, on-device AI apps.
 
 ## Overview
 
-`AIKit` runs on-device AI through the ``CoreMLLLMBackend`` runtime (a thin
-wrapper over [john-rocky/coreml-llm](https://github.com/john-rocky/coreml-llm))
-behind the ``AIBackend`` protocol, and composes chat, tools, memory, RAG, web
-search, vision, and speech with minimal Swift code.
+`AIKit` runs on-device AI through the `CoreMLLLMBackend` runtime (a thin
+wrapper over [john-rocky/coreml-llm](https://github.com/john-rocky/coreml-llm),
+available in the `AIKitCoreMLLLM` target) behind the ``AIBackend`` protocol,
+and composes chat, tools, memory, RAG, web search, vision, and speech with
+minimal Swift code.
 
 ```swift
 let session = ChatSession(backend: CoreMLLLMBackend(model: .gemma4e2b))

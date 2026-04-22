@@ -9,7 +9,7 @@ fileprivate struct ClassifyOut: Decodable, Sendable {
 /// `AIKit` exposes simple one-shot helpers (``chat(_:backend:systemPrompt:config:)``,
 /// ``stream(_:backend:systemPrompt:config:)``, ``extract(_:from:schema:instruction:backend:)``, …)
 /// that work identically across any ``AIBackend``. The bundled runtime is
-/// ``CoreMLLLMBackend`` (see ``AIKitCoreMLLLM``).
+/// `CoreMLLLMBackend` (in the `AIKitCoreMLLLM` target).
 ///
 /// Use ``ChatSession`` when you need state, tool calls, memory, or retrieval.
 public enum AIKit {

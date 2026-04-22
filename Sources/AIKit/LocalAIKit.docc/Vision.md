@@ -1,7 +1,7 @@
 # Vision
 
 OCR and image analysis via the Vision framework, plus LLM vision through
-``CoreMLLLMBackend`` (multimodal via Neural Engine).
+`CoreMLLLMBackend` (multimodal via Neural Engine).
 
 ## OCR
 

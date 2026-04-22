@@ -4,7 +4,8 @@ import Foundation
 ///
 /// Entries are Q4_K_M GGUF quantisations — useful as metadata for your own
 /// runtime integration. LocalAIKit itself only ships the `CoreMLLLMBackend`;
-/// see ``CoreMLLLMBackend/availableModels`` for the built-in CoreML-LLM catalog.
+/// see `CoreMLLLMBackend.availableModels` (in `AIKitCoreMLLLM`) for the built-in
+/// CoreML-LLM catalog.
 public enum ModelCatalog {
 
     // MARK: GGUF metadata
