@@ -50,7 +50,6 @@ let registry = ToolRegistry { spec, argumentData in
 - `MapKitBridge.searchPlacesTool()`
 - `HealthKitBridge().recentStepCountTool()`
 - `NotificationBridge.scheduleTool()`
-- `CoreMLClassifierTool.asTool()`
 
 ## Multi-step plans
 

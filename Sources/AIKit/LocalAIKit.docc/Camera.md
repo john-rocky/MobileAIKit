@@ -3,7 +3,7 @@
 ## Describe a photo with VLM
 
 ```swift
-let backend = MLXVLMBackend(modelId: "qwen-vl", hubRepoId: "mlx-community/Qwen2-VL-2B-Instruct-4bit")
+let backend = CoreMLLLMBackend(model: .gemma4e2b)
 let caption = try await AIKit.analyzeImage(
     ImageAttachment(source: .fileURL(url)),
     prompt: "Describe what's happening and what's notable.",

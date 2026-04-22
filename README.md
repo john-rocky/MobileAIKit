@@ -2,7 +2,9 @@
 
 Swift-first toolkit that lets you ship local, on-device AI apps on iOS, macOS, visionOS, tvOS, and watchOS in a few lines.
 
-Pick any runtime — **CoreML-LLM, Apple Foundation Models, MLX, llama.cpp, generic CoreML** — behind one unified `AIBackend` protocol. Wire it into SwiftUI prefabs, structured output, tool calling, memory, RAG, web search, vision, and speech without leaving Swift.
+The current runtime is **CoreML-LLM (ANE-optimised, multimodal)** via the unified `AIBackend` protocol — wired into SwiftUI prefabs, structured output, tool calling, memory, RAG, web search, vision, and speech without leaving Swift.
+
+> We're intentionally starting with a single runtime (`AIKitCoreMLLLM`) to keep the graph small and the behavior predictable. Other runtimes (MLX, llama.cpp, Foundation Models, generic CoreML) are out of scope for now and can be brought back in later once the CoreML-LLM path is stable.
 
 ## Install
 
@@ -18,10 +20,6 @@ Choose the products you need:
 |---|---|
 | `AIKit` | Core protocols, chat, tools, memory, RAG, privacy, observability |
 | `AIKitCoreMLLLM` | Wrapper over [john-rocky/coreml-llm](https://github.com/john-rocky/coreml-llm) |
-| `AIKitFoundationModels` | Apple Foundation Models (iOS 26+) |
-| `AIKitMLX` | mlx-swift LLM/VLM backend |
-| `AIKitLlamaCpp` | llama.cpp GGUF backend |
-| `AIKitCoreML` | Generic CoreML LLM + classifier backends |
 | `AIKitVision` | OCR, image analysis, VisionKit DataScanner |
 | `AIKitSpeech` | STT (SFSpeechRecognizer), TTS (AVSpeechSynthesizer, Premium/Personal voices) |
 | `AIKitUI` | Chat, RAG, voice, camera, benchmark, memory inspector prefabs |
@@ -69,7 +67,7 @@ How it works: `AIAgent` owns a `ChatSession` and a `ToolRegistry`. UI-presenting
 ```swift
 let answer = try await AIKit.chat(
     "Explain Swift actors in one sentence.",
-    backend: LlamaCppBackend(modelPath: modelURL)
+    backend: CoreMLLLMBackend(model: .gemma4e2b)
 )
 ```
 
@@ -151,7 +149,7 @@ Call `host.unload()` on memory warnings, `host.reload()` to swap models.
 ## 3-line Chat UI
 
 ```swift
-let backend = LlamaCppBackend(modelPath: modelURL)
+let backend = CoreMLLLMBackend(model: .gemma4e2b)
 let session = ChatSession(backend: backend, systemPrompt: "Be concise.")
 AIChatView(session: session)
 ```
@@ -170,22 +168,7 @@ print(answer.answer)
 print(answer.citations.map(\.source))
 ```
 
-Swap in a real sentence-transformer once accuracy matters. `AIKitCoreML` ships the `CoreMLEmbedder` wrapper (presets for `all-MiniLM-L6-v2`, `all-mpnet-base-v2`, `multilingual-e5-small`, `bge-small-en-v1.5`) — **no weights are bundled with the library**. Download the `.mlpackage`/`.mlmodelc` zip once at first launch and cache the returned URL:
-
-```swift
-import AIKitCoreML
-
-let modelURL = try await CoreMLEmbedder.downloadZippedModel(
-    from: URL(string: "https://huggingface.co/<you>/MiniLM-L6-v2-coreml/resolve/main/MiniLM.mlpackage.zip")!,
-    cacheKey: "minilm-l6-v2",
-    expectedBytes: 90_000_000
-) { fraction in print("download \(Int(fraction * 100))%") }
-
-let embedder = CoreMLEmbedder(configuration: .miniLM_L6_v2(modelURL: modelURL))
-let rag = RAGPipeline(embedder: embedder)
-```
-
-Already-bundled option (for apps that want zero first-launch download): pass any local `.mlmodelc` URL — e.g. `Bundle.main.url(forResource: "MiniLM", withExtension: "mlmodelc")` — straight into the preset.
+`HashingEmbedder` ships with `AIKit` — zero setup. Swap in your own `Embedder` once accuracy matters.
 
 ## Structured output (Codable)
 
@@ -284,21 +267,14 @@ let assistant = VoiceAssistant(
 )
 ```
 
-### Bring your own Whisper
+### Bring your own transcriber
 
-LocalAIKit doesn't bundle [WhisperKit](https://github.com/argmaxinc/WhisperKit):
-its `swift-transformers` requirement collides with `mlx-swift-examples`, and
-pinning it inside this graph would force everyone building with MLX to give
-up MLX. If you want Whisper-grade transcription, add WhisperKit to your own
-app and plug it in through `VoiceTranscriber`:
+If you want Whisper-grade transcription, plug your engine in through `VoiceTranscriber`:
 
 ```swift
 import AIKit
-import WhisperKit
 
-final class WhisperTranscriber: VoiceTranscriber {
-    private let pipeline: WhisperKit
-    init(pipeline: WhisperKit) { self.pipeline = pipeline }
+final class MyTranscriber: VoiceTranscriber {
     func requestAuthorization() async -> Bool { /* AVAudioApplication */ true }
     func live() throws -> AsyncThrowingStream<VoiceTranscriberResult, Error> { /* … */ }
     func stop() { /* … */ }
@@ -306,7 +282,7 @@ final class WhisperTranscriber: VoiceTranscriber {
 
 let assistant = VoiceAssistant(
     backend: backend,
-    transcriber: WhisperTranscriber(pipeline: try await WhisperKit()),
+    transcriber: MyTranscriber(),
     speaker: tts
 )
 ```
@@ -333,32 +309,21 @@ let session = ChatSession(backend: backend, memory: memory)
 _ = try await session.send("Remember my birthday is May 14.")
 ```
 
-## Pick a backend
+## Backend
 
 ```swift
-// 1. Apple on-device model (iOS 26+)
-let backend: any AIBackend = FoundationModelsBackend(instructions: "Be brief.")
+import AIKitCoreMLLLM
 
-// 2. CoreML-LLM (ANE-optimised, john-rocky/coreml-llm)
 let backend = CoreMLLLMBackend(model: .gemma4e2b)
-
-// 3. MLX (Apple Silicon)
-let backend = MLXBackend(modelId: "qwen3-1.7b", hubRepoId: "mlx-community/Qwen3-1.7B-4bit")
-
-// 4. llama.cpp (GGUF)
-let backend = LlamaCppBackend(modelPath: ggufURL)
-
-// 5. Generic CoreML
-let backend = CoreMLBackend(configuration: .init(modelURL: mlpackageURL, tokenizerRepoId: "Qwen/Qwen3-1.7B-Instruct"))
+try await backend.load()
 ```
 
-Or route between them with fallback:
+`BackendRouter` can still fall back between multiple instances you construct yourself (useful when you want a smaller model for constrained devices):
 
 ```swift
 let router = BackendRouter(backends: [
-    FoundationModelsBackend(),
     CoreMLLLMBackend(model: .gemma4e2b),
-    LlamaCppBackend(modelPath: ggufURL)
+    CoreMLLLMBackend(model: .gemma4e4b)
 ])
 ```
 
@@ -416,7 +381,7 @@ await ResourceGovernor.shared.setPreferredProfile(.balanced)
 await ResourceGovernor.shared.setThermalDegradation(true)
 
 let recorder = BenchmarkRecorder()
-_ = try await recorder.run(name: "llama-3.2-1b", backend: backend, prompts: prompts)
+_ = try await recorder.run(name: "gemma4e2b", backend: backend, prompts: prompts)
 ```
 
 ## License

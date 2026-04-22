@@ -56,7 +56,7 @@ Zero network. The model runs through Apple's Neural Engine via CoreML-LLM. Photo
 
 ## Variations to try
 
-- Swap `CoreMLLLMBackend(model: .gemma4e2b)` for `LlamaCppBackend(modelPath: …)` with `ModelCatalog.gemma4_e2b_Q4` to run the GGUF path.
+- Swap `CoreMLLLMBackend(model: .gemma4e2b)` for `.gemma4e4b` (see `CoreMLLLMBackend.availableModels`) for higher quality on Pro devices.
 - Replace `HashingEmbedder` with `NLEmbedder(language: .english)` for better semantic search.
 - Add an `AIBenchmarkView` tab to compare E2B vs E4B on your device.
 - Wrap `MomentStore.add(_:)` with `GenerationActivityController` to show a Live Activity while Gemma is writing.

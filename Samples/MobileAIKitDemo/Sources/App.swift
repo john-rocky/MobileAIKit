@@ -1,7 +1,7 @@
 import SwiftUI
 import AIKit
 import AIKitUI
-import AIKitLlamaCpp
+import AIKitCoreMLLLM
 
 @main
 struct MobileAIKitDemoApp: App {
@@ -16,9 +16,7 @@ struct RootView: View {
     @State private var backend: (any AIBackend)?
     @State private var error: String?
     @State private var downloading = false
-    @State private var progress: Double = 0
-
-    let descriptor = ModelCatalog.gemma4_e2b_Q4
+    @State private var status: String = ""
 
     var body: some View {
         NavigationStack {
@@ -27,10 +25,10 @@ struct RootView: View {
                     HomeView(backend: backend)
                 } else if downloading {
                     VStack(spacing: 16) {
-                        ProgressView(value: progress) {
-                            Text(descriptor.displayName)
+                        ProgressView {
+                            Text("Gemma 4 E2B")
                         }
-                        Text("\(Int(progress * 100))%")
+                        Text(status).font(.caption).foregroundStyle(.secondary)
                     }
                     .padding()
                 } else if let error {
@@ -58,13 +56,13 @@ struct RootView: View {
     private func prepare() async {
         downloading = true
         error = nil
-        let downloader = ModelDownloader()
+        let b = CoreMLLLMBackend(model: .gemma4e2b)
+        b.progressHandler = { line in
+            Task { @MainActor in self.status = line }
+        }
         do {
-            let dir = try await downloader.ensure(descriptor) { p in
-                Task { @MainActor in self.progress = p.fraction }
-            }
-            let fileURL = dir.appendingPathComponent(descriptor.files.first!.relativePath)
-            backend = LlamaCppBackend(modelPath: fileURL, template: .chatML)
+            try await b.load()
+            backend = b
         } catch {
             self.error = error.localizedDescription
         }

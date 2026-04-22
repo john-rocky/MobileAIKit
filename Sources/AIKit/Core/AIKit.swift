@@ -8,8 +8,8 @@ fileprivate struct ClassifyOut: Decodable, Sendable {
 ///
 /// `AIKit` exposes simple one-shot helpers (``chat(_:backend:systemPrompt:config:)``,
 /// ``stream(_:backend:systemPrompt:config:)``, ``extract(_:from:schema:instruction:backend:)``, …)
-/// that work identically across every bundled ``AIBackend`` (CoreML-LLM, MLX, llama.cpp,
-/// Apple Foundation Models, generic CoreML).
+/// that work identically across any ``AIBackend``. The bundled runtime is
+/// ``CoreMLLLMBackend`` (see ``AIKitCoreMLLLM``).
 ///
 /// Use ``ChatSession`` when you need state, tool calls, memory, or retrieval.
 public enum AIKit {
@@ -19,7 +19,7 @@ public enum AIKit {
     /// Generates a complete answer for `prompt` using `backend`.
     /// - Parameters:
     ///   - prompt: User message text.
-    ///   - backend: Any ``AIBackend`` instance (e.g. `LlamaCppBackend`).
+    ///   - backend: Any ``AIBackend`` instance (e.g. `CoreMLLLMBackend`).
     ///   - systemPrompt: Optional system instruction prepended to the request.
     ///   - config: Generation options. Defaults to ``GenerationConfig/default``.
     /// - Returns: The full assistant text.

@@ -11,15 +11,15 @@ dependencies: [
 ]
 ```
 
-Link the targets you need. For the simplest chat flow: `AIKit`, one backend, and `AIKitUI`.
+Link the targets you need. For the simplest chat flow: `AIKit`, `AIKitCoreMLLLM`, and `AIKitUI`.
 
 ## Run your first prompt
 
 ```swift
 import AIKit
-import AIKitLlamaCpp
+import AIKitCoreMLLLM
 
-let backend = LlamaCppBackend(modelPath: modelURL)
+let backend = CoreMLLLMBackend(model: .gemma4e2b)
 let answer = try await AIKit.chat("Say hi in Japanese.", backend: backend)
 print(answer)
 ```
@@ -39,7 +39,7 @@ import AIKitUI
 
 struct ContentView: View {
     var body: some View {
-        let backend = LlamaCppBackend(modelPath: modelURL)
+        let backend = CoreMLLLMBackend(model: .gemma4e2b)
         let session = ChatSession(backend: backend, systemPrompt: "Be concise.")
         AIChatView(session: session)
     }

@@ -3,7 +3,7 @@
 End-to-end SwiftUI chat app, including streaming, attachments, and tool calls.
 
 ```swift
-let backend = LlamaCppBackend(modelPath: modelURL)
+let backend = CoreMLLLMBackend(model: .gemma4e2b)
 let session = ChatSession(backend: backend, systemPrompt: "Be concise.")
 AIChatView(session: session)
 ```

@@ -5,7 +5,7 @@ Expose your AI features to Shortcuts and Siri.
 ```swift
 import AIKitIntegration
 
-AIKitChatIntent.backendProvider = { LlamaCppBackend(modelPath: modelURL) }
+AIKitChatIntent.backendProvider = { CoreMLLLMBackend(model: .gemma4e2b) }
 // Siri: "Ask MyApp ..."
 ```
 
