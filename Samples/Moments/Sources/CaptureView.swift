@@ -48,7 +48,7 @@ struct CaptureView: View {
                     transcribing ? stopListening() : startListening()
                 } label: {
                     Label(transcribing ? "Stop" : "Tap and speak", systemImage: transcribing ? "stop.circle.fill" : "mic.circle.fill")
-                        .foregroundStyle(transcribing ? .red : .tint)
+                        .foregroundStyle(transcribing ? Color.red : Color.accentColor)
                 }
                 if !transcript.isEmpty {
                     Text(transcript).font(.body)

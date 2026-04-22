@@ -105,7 +105,7 @@ struct InterpreterView: View {
             VStack {
                 Image(systemName: active ? "stop.circle.fill" : "mic.circle.fill")
                     .font(.system(size: 54))
-                    .foregroundStyle(active ? .red : .tint)
+                    .foregroundStyle(active ? Color.red : Color.accentColor)
                 Text(label).font(.caption)
             }
         }
@@ -213,7 +213,7 @@ struct UtteranceBubble: View {
                 }
             }
             .padding(10)
-            .background(utterance.speaker == .a ? .tint.opacity(0.15) : .secondary.opacity(0.15), in: RoundedRectangle(cornerRadius: 14))
+            .background(utterance.speaker == .a ? AnyShapeStyle(.tint.opacity(0.15)) : AnyShapeStyle(.secondary.opacity(0.15)), in: RoundedRectangle(cornerRadius: 14))
             .frame(maxWidth: 320, alignment: utterance.speaker == .a ? .leading : .trailing)
             if utterance.speaker == .a { Spacer() }
         }
