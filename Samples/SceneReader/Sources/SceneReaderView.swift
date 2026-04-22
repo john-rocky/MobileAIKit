@@ -103,7 +103,7 @@ struct SceneReaderView: View {
                     listening ? stopListening() : startListening()
                 } label: {
                     Image(systemName: listening ? "stop.circle.fill" : "mic.circle.fill")
-                        .font(.title2).foregroundStyle(listening ? .red : .tint)
+                        .font(.title2).foregroundStyle(listening ? Color.red : Color.accentColor)
                 }
                 Button("Ask") { Task { await askFollowUp() } }
                     .buttonStyle(.borderedProminent).disabled(followUpQuestion.isEmpty || processing)

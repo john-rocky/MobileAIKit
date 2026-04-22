@@ -29,7 +29,7 @@ let package = Package(
         ])
     ],
     dependencies: [
-        .package(url: "https://github.com/john-rocky/coreml-llm", from: "0.9.0")
+        .package(url: "https://github.com/john-rocky/coreml-llm", from: "1.1.1")
     ],
     targets: [
         .target(
