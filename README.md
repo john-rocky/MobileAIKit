@@ -94,8 +94,20 @@ let research = try await AIKit.askWithWebTools("Compare Qwen 3 vs Gemma 4 on mat
 // Raw search results (no LLM)
 let results: [WebSearchResult] = try await AIKit.searchWeb("latest SwiftUI news")
 
-// PDF Q&A
+// PDF Q&A (one-shot helper)
 let answer = try await AIKit.askPDF("When does SLA reset?", pdfURL: url, backend: backend)
+
+// Or attach a PDF / text file / plain-text blob directly to any message —
+// CoreMLLLMBackend extracts the text via PDFKit / UTF-8 decode and inlines
+// it into the prompt alongside your question.
+let briefing = try await AIKit.chat(
+    "Summarise the attached briefing.",
+    attachments: [
+        .pdf(PDFAttachment(fileURL: pdfURL)),
+        .text(TextAttachment(text: extraNotes, title: "notes.md"))
+    ],
+    backend: backend
+)
 
 // Voice
 let transcript = try await AIKit.transcribe(audio: audio)

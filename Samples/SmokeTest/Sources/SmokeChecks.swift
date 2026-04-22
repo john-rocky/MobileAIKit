@@ -219,6 +219,80 @@ enum SmokeChecks {
             }
         ),
         Check(
+            name: "TextAttachment ingestion",
+            detail: "A .text attachment's content is visible to the model",
+            runner: { backend in
+                let attachment = TextAttachment(
+                    text: "The project's code name is Polaris-7. Remember that when asked.",
+                    title: "brief.txt"
+                )
+                let message = Message.user(
+                    "What is the code name described in the attached brief?",
+                    attachments: [.text(attachment)]
+                )
+                let result = try await backend.generate(
+                    messages: [message],
+                    tools: [],
+                    config: GenerationConfig(maxTokens: 40, temperature: 0.0)
+                )
+                let reply = result.message.content.lowercased()
+                if !reply.contains("polaris") {
+                    throw SmokeError("model didn't see text attachment. reply: \(trim(result.message.content, 80))")
+                }
+                return trim(result.message.content, 60)
+            }
+        ),
+        Check(
+            name: "PDFAttachment ingestion",
+            detail: "A generated PDF's extracted text is visible to the model",
+            runner: { backend in
+                #if canImport(UIKit) && canImport(PDFKit)
+                guard let url = try? writeTempPDF(containing: "The emergency passphrase is violet-kangaroo. Use it exactly.") else {
+                    throw SmokeError("could not render test PDF")
+                }
+                defer { try? FileManager.default.removeItem(at: url) }
+                let message = Message.user(
+                    "What is the emergency passphrase in the attached PDF?",
+                    attachments: [.pdf(PDFAttachment(fileURL: url))]
+                )
+                let result = try await backend.generate(
+                    messages: [message],
+                    tools: [],
+                    config: GenerationConfig(maxTokens: 40, temperature: 0.0)
+                )
+                let reply = result.message.content.lowercased()
+                if !reply.contains("violet") && !reply.contains("kangaroo") {
+                    throw SmokeError("PDF content not reached. reply: \(trim(result.message.content, 100))")
+                }
+                return trim(result.message.content, 60)
+                #else
+                throw SmokeError("UIKit/PDFKit unavailable — run on iOS")
+                #endif
+            }
+        ),
+        Check(
+            name: "FileAttachment ingestion (.txt)",
+            detail: "A .txt file on disk is read and included in the prompt",
+            runner: { backend in
+                let url = try writeTempTextFile(contents: "The duty officer tonight is Sato. No exceptions.")
+                defer { try? FileManager.default.removeItem(at: url) }
+                let message = Message.user(
+                    "Who is the duty officer tonight according to the attached note?",
+                    attachments: [.file(FileAttachment(fileURL: url, mimeType: "text/plain"))]
+                )
+                let result = try await backend.generate(
+                    messages: [message],
+                    tools: [],
+                    config: GenerationConfig(maxTokens: 40, temperature: 0.0)
+                )
+                let reply = result.message.content.lowercased()
+                if !reply.contains("sato") {
+                    throw SmokeError("file content not reached. reply: \(trim(result.message.content, 80))")
+                }
+                return trim(result.message.content, 60)
+            }
+        ),
+        Check(
             name: "BackendRouter fallback",
             detail: "Router picks the healthy backend when one fails",
             runner: { backend in
@@ -270,6 +344,41 @@ private func trim(_ s: String, _ max: Int) -> String {
     if t.count <= max { return t }
     return String(t.prefix(max)) + "…"
 }
+
+/// Write a tiny .txt file to a unique location under /tmp for the smoke test
+/// to point a `FileAttachment` at. Caller is expected to clean up via `defer`.
+func writeTempTextFile(contents: String, ext: String = "txt") throws -> URL {
+    let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("smoketest-\(UUID().uuidString).\(ext)")
+    try contents.write(to: url, atomically: true, encoding: .utf8)
+    return url
+}
+
+#if canImport(UIKit) && canImport(PDFKit)
+import PDFKit
+
+/// Render a 1-page PDF whose content area contains `text`. Returns the temp file URL.
+func writeTempPDF(containing text: String) throws -> URL {
+    let pageRect = CGRect(x: 0, y: 0, width: 612, height: 792) // US Letter
+    let renderer = UIGraphicsPDFRenderer(bounds: pageRect)
+    let data = renderer.pdfData { ctx in
+        ctx.beginPage()
+        let font = UIFont.systemFont(ofSize: 20)
+        let paragraph = NSMutableParagraphStyle()
+        paragraph.lineBreakMode = .byWordWrapping
+        let attrs: [NSAttributedString.Key: Any] = [
+            .font: font,
+            .paragraphStyle: paragraph
+        ]
+        let inset = CGRect(x: 50, y: 50, width: pageRect.width - 100, height: pageRect.height - 100)
+        (text as NSString).draw(in: inset, withAttributes: attrs)
+    }
+    let url = FileManager.default.temporaryDirectory
+        .appendingPathComponent("smoketest-\(UUID().uuidString).pdf")
+    try data.write(to: url)
+    return url
+}
+#endif
 
 #if canImport(UIKit)
 private func tinyImageJPEGData() -> Data? {

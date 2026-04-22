@@ -17,6 +17,9 @@ Single-screen iOS app that runs every headline LocalAIKit public API against the
 | `AIKit.classify` | Zero-shot labelling via `extract` under the hood |
 | `AIKit.analyzeImage` | Vision path through the VLM |
 | `AIKit.ocr` | `AIKitVision` OCR on a rendered text bitmap |
+| `TextAttachment` | `.text` attachment content reaches the model |
+| `PDFAttachment` | `.pdf` is extracted (PDFKit) and inlined in the prompt |
+| `FileAttachment` (text) | `.file` with a text MIME is read from disk and inlined |
 | `BackendRouter` | Fallback from a failing backend to a healthy one |
 
 What it does *not* cover (those need device-only permissions / hardware):

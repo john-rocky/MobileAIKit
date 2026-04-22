@@ -16,6 +16,12 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
     public let computeUnits: MLComputeUnits
     public var progressHandler: (@Sendable (String) -> Void)?
 
+    /// Controls how PDF / text / generic file attachments are inlined into the
+    /// user prompt. Gemma 4 natively ingests only images + audio, so anything
+    /// else is rendered to text and appended to `message.content` before being
+    /// sent to the model. Tune the char budgets here.
+    public var attachmentIngestionOptions: AttachmentIngestionOptions = .default
+
     private var llm: CoreMLLLM?
     private let lock = NSLock()
 
@@ -142,7 +148,8 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
     ) async throws -> GenerationResult {
         try await load()
         guard let llm = llm else { throw AIError.modelNotLoaded }
-        let augmented = ToolPromptInjector.inject(tools: tools, into: messages)
+        let withAttachments = AttachmentIngestion.expand(messages: messages, options: attachmentIngestionOptions)
+        let augmented = ToolPromptInjector.inject(tools: tools, into: withAttachments)
         let (mapped, image, audio) = try await Self.prepare(augmented)
         let start = Date()
         let output = try await llm.generate(
@@ -171,7 +178,8 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
                 do {
                     try await self.load()
                     guard let llm = self.llm else { throw AIError.modelNotLoaded }
-                    let augmented = ToolPromptInjector.inject(tools: tools, into: messages)
+                    let withAttachments = AttachmentIngestion.expand(messages: messages, options: self.attachmentIngestionOptions)
+                    let augmented = ToolPromptInjector.inject(tools: tools, into: withAttachments)
                     let (mapped, image, audio) = try await Self.prepare(augmented)
                     let video = Self.firstVideoURL(in: augmented)
                     let stream: AsyncStream<String>
@@ -252,7 +260,13 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
                         let data = try audioAtt.loadData()
                         audio = Self.pcmFloats(from: data)
                     }
-                default:
+                case .video:
+                    // Routed through `llm.stream(videoURL:)` in `stream`, not prepared here.
+                    break
+                case .pdf, .text, .file:
+                    // Already extracted to text by AttachmentIngestion.expand and
+                    // stripped from message.attachments before prepare runs — any
+                    // residual case here would be a programmer error upstream.
                     break
                 }
             }
