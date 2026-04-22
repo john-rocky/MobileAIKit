@@ -16,20 +16,35 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
         public let displayName: String
         public let contextLength: Int
         public let approximateSizeGB: Double
+        /// Target image size fed to the vision tower. If nil, mlx-swift-examples
+        /// uses whatever raw size the loader picks — which mismatches every
+        /// shipped VLM's positional embedding and crashes with `broadcast_shapes`.
+        /// Defaults to 1024×1024 (validated for Qwen2.5-VL and SmolVLM).
+        public let recommendedInputSize: CGSize?
 
         public init(
             id: String,
             hubRepoId: String,
             displayName: String,
             contextLength: Int = 4096,
-            approximateSizeGB: Double
+            approximateSizeGB: Double,
+            recommendedInputSize: CGSize? = CGSize(width: 1024, height: 1024)
         ) {
             self.id = id
             self.hubRepoId = hubRepoId
             self.displayName = displayName
             self.contextLength = contextLength
             self.approximateSizeGB = approximateSizeGB
+            self.recommendedInputSize = recommendedInputSize
         }
+
+        public static let qwen25_vl_2b_4bit = Model(
+            id: "qwen2.5-vl-2b-4bit",
+            hubRepoId: "mlx-community/Qwen2.5-VL-2B-Instruct-4bit",
+            displayName: "Qwen2.5-VL 2B (4-bit)",
+            contextLength: 32_768,
+            approximateSizeGB: 1.5
+        )
 
         public static let qwen25_vl_3b_4bit = Model(
             id: "qwen2.5-vl-3b-4bit",
@@ -66,6 +81,7 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
         public static let catalog: [Model] = [
             .smolvlm_256m_instruct_4bit,
             .smolvlm_500m_instruct_4bit,
+            .qwen25_vl_2b_4bit,
             .qwen25_vl_3b_4bit,
             .qwen25_vl_7b_4bit
         ]
@@ -74,9 +90,16 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
     public let info: BackendInfo
     public let modelId: String
     public let hubRepoId: String
-    /// MLX GPU weight-cache limit in bytes. Set lower on 6 GB iPhones, higher on Pro Max.
-    /// Defaults to 256 MB; can also be driven from ``ResourceGovernor`` at the call site.
+    /// MLX cache limit in bytes applied to both `MLXLMCommon.Memory.cacheLimit`
+    /// (activation/scratch reuse pool — the one that actually constrains VLM
+    /// forward passes) and `MLX.GPU.cacheLimit` (lower-level Metal buffer cache).
+    /// Defaults to 20 MB, matching the upstream `MLXChatExample` — counterintuitively
+    /// small, but aggressive buffer reuse is what prevents VLM OOM on iOS.
     public var gpuCacheLimitBytes: Int
+    /// Target image size handed to the vision tower. Must match the model's
+    /// positional embedding grid or the forward pass crashes with
+    /// `broadcast_shapes` mismatch. Defaults to 1024×1024.
+    public var recommendedInputSize: CGSize?
     private var container: ModelContainer?
     private let lock = NSLock()
 
@@ -84,11 +107,13 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
         modelId: String,
         hubRepoId: String,
         contextLength: Int = 4096,
-        gpuCacheLimitBytes: Int = 256 * 1024 * 1024
+        gpuCacheLimitBytes: Int = 20 * 1024 * 1024,
+        recommendedInputSize: CGSize? = CGSize(width: 1024, height: 1024)
     ) {
         self.modelId = modelId
         self.hubRepoId = hubRepoId
         self.gpuCacheLimitBytes = gpuCacheLimitBytes
+        self.recommendedInputSize = recommendedInputSize
         self.info = BackendInfo(
             name: "mlx.vlm.\(modelId)",
             version: "1.0",
@@ -99,12 +124,13 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
     }
 
     /// Catalog convenience: `MLXVLMBackend(model: .qwen25_vl_3b_4bit)`.
-    public convenience init(model: Model, gpuCacheLimitBytes: Int = 256 * 1024 * 1024) {
+    public convenience init(model: Model, gpuCacheLimitBytes: Int = 20 * 1024 * 1024) {
         self.init(
             modelId: model.id,
             hubRepoId: model.hubRepoId,
             contextLength: model.contextLength,
-            gpuCacheLimitBytes: gpuCacheLimitBytes
+            gpuCacheLimitBytes: gpuCacheLimitBytes,
+            recommendedInputSize: model.recommendedInputSize
         )
     }
 
@@ -118,7 +144,7 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
         do {
             let factory = VLMModelFactory.shared
             let configuration = ModelConfiguration(id: hubRepoId)
-            MLX.GPU.set(cacheLimit: gpuCacheLimitBytes)
+            applyCacheLimits()
             let loaded = try await factory.loadContainer(
                 hub: HubApi(),
                 configuration: configuration
@@ -145,7 +171,7 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
         do {
             let factory = VLMModelFactory.shared
             let configuration = ModelConfiguration(id: hubRepoId)
-            MLX.GPU.set(cacheLimit: gpuCacheLimitBytes)
+            applyCacheLimits()
             let loaded = try await factory.loadContainer(
                 hub: HubApi(),
                 configuration: configuration
@@ -176,7 +202,7 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
         do {
             let factory = VLMModelFactory.shared
             let configuration = ModelConfiguration(id: hubRepoId)
-            MLX.GPU.set(cacheLimit: gpuCacheLimitBytes)
+            applyCacheLimits()
             let loaded = try await factory.loadContainer(
                 hub: HubApi(),
                 configuration: configuration
@@ -197,6 +223,14 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
     public func unload() async {
         lock.withLock { container = nil }
         MLX.GPU.clearCache()
+    }
+
+    /// Apply cache limits to both the activation pool (`MLXLMCommon.Memory.cacheLimit`)
+    /// and the Metal buffer cache (`MLX.GPU.cacheLimit`). The former is what actually
+    /// keeps VLM forward passes from exhausting iOS's app-jetsam budget.
+    private func applyCacheLimits() {
+        MLXLMCommon.Memory.cacheLimit = gpuCacheLimitBytes
+        MLX.GPU.set(cacheLimit: gpuCacheLimitBytes)
     }
 
     public func generate(
@@ -229,7 +263,15 @@ public final class MLXVLMBackend: AIBackend, @unchecked Sendable {
                     try await self.load()
                     guard let container = self.container else { throw AIError.modelNotLoaded }
                     let chat = try await Self.mapChat(messages)
-                    let input = try UserInput(chat: chat)
+                    let input: UserInput
+                    if let size = self.recommendedInputSize {
+                        input = UserInput(
+                            chat: chat,
+                            processing: .init(resize: size)
+                        )
+                    } else {
+                        input = try UserInput(chat: chat)
+                    }
                     let params: GenerateParameters = {
                         var p = GenerateParameters()
                         p.maxTokens = config.maxTokens
