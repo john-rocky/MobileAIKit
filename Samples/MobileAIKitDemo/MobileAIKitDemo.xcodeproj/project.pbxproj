@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		19DB674A3B0D087F2B79B86D /* AIKitCoreMLLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 049F23BBE287DEB65711B44B /* AIKitCoreMLLLM */; };
+		19DB674A3B0D087F2B79B86D /* AIKitCoreMLLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 5F2AF4FC7ACAF89527BA3ACF /* AIKitCoreMLLLM */; };
 		46FAB3FC54C4E89A1FAD7291 /* AIKit in Frameworks */ = {isa = PBXBuildFile; productRef = 6CBDF3A610C50BA0F7692EC3 /* AIKit */; };
 		6FAA00AF1FC066C947E6773E /* AIKitIntegration in Frameworks */ = {isa = PBXBuildFile; productRef = 98CBE45FF8CF24D5496E6BF3 /* AIKitIntegration */; };
 		A7397D0233760430590CD46B /* AIKitSpeech in Frameworks */ = {isa = PBXBuildFile; productRef = 9D2E6C1F63BC20D8AFCAEE72 /* AIKitSpeech */; };
@@ -25,9 +25,9 @@
 		0855B3FB44D1ED4E788356B1 /* BrowseAndAskView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseAndAskView.swift; sourceTree = "<group>"; };
 		1BE7FB150BA01B3F3CA35882 /* MobileAIKitDemo.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = MobileAIKitDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B647929FE6AF4F4EB5D664E /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		570B518DCE204CE7AD94266D /* LocalAIKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LocalAIKit; path = ../..; sourceTree = SOURCE_ROOT; };
 		81DAAEA232B640B854D88212 /* VoiceDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceDemoView.swift; sourceTree = "<group>"; };
 		9B7F8A48F589ED7E275C20FE /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
-		CBFA68E855951214382FA862 /* MobileAIKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MobileAIKit; path = ../..; sourceTree = SOURCE_ROOT; };
 		CC88396AE71E82BCB02B2603 /* HomeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HomeView.swift; sourceTree = "<group>"; };
 		F5EFB7ADAEC89F0A4861509E /* WebSearchAgentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebSearchAgentView.swift; sourceTree = "<group>"; };
 		FFA8B44B1E104A7499E922F2 /* RAGDemoView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAGDemoView.swift; sourceTree = "<group>"; };
@@ -70,7 +70,7 @@
 		63ED9FF30AEBFE8C8D486382 /* Packages */ = {
 			isa = PBXGroup;
 			children = (
-				CBFA68E855951214382FA862 /* MobileAIKit */,
+				570B518DCE204CE7AD94266D /* LocalAIKit */,
 			);
 			name = Packages;
 			sourceTree = "<group>";
@@ -107,7 +107,7 @@
 			packageProductDependencies = (
 				6CBDF3A610C50BA0F7692EC3 /* AIKit */,
 				70B9D5C7005C6338DE3D1489 /* AIKitUI */,
-				049F23BBE287DEB65711B44B /* AIKitCoreMLLLM */,
+				5F2AF4FC7ACAF89527BA3ACF /* AIKitCoreMLLLM */,
 				9D2E6C1F63BC20D8AFCAEE72 /* AIKitSpeech */,
 				ABF8C3899C731851F5690767 /* AIKitVision */,
 				98CBE45FF8CF24D5496E6BF3 /* AIKitIntegration */,
@@ -364,7 +364,7 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		049F23BBE287DEB65711B44B /* AIKitCoreMLLLM */ = {
+		5F2AF4FC7ACAF89527BA3ACF /* AIKitCoreMLLLM */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = AIKitCoreMLLLM;
 		};

@@ -91,9 +91,10 @@ public struct GenerationResult: Sendable, Hashable {
 
 /// Unified protocol for any local AI runtime.
 ///
-/// The bundled ``CoreMLLLMBackend`` conforms to this, as does ``BackendRouter``
-/// for fallback between instances you construct yourself. Call ``load()`` once
-/// before your first generation for best latency; it's also called lazily on demand.
+/// The bundled `CoreMLLLMBackend` (in the `AIKitCoreMLLLM` target) conforms to
+/// this, as does ``BackendRouter`` for fallback between instances you construct
+/// yourself. Call ``load()`` once before your first generation for best latency;
+/// it's also called lazily on demand.
 ///
 /// Backends are **reference types and `Sendable`**. They may be shared across
 /// actors. Use a `BackendRouter` to fall back between multiple backends.

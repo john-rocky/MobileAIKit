@@ -17,8 +17,8 @@ let backend = CoreMLLLMBackend(model: .gemma4e2b)
 try await backend.load()
 ```
 
-Hold the backend once (e.g. via ``AIBackendHost``) — creating a new instance
-on every call will reload the model.
+Hold the backend once (e.g. via `AIBackendHost` from `AIKitUI`) — creating a
+new instance on every call will reload the model.
 
 ## Router with fallback
 
