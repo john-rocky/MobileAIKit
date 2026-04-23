@@ -29,7 +29,9 @@ let package = Package(
         ])
     ],
     dependencies: [
-        .package(url: "https://github.com/john-rocky/coreml-llm", from: "1.1.1")
+        // FunctionGemma-270M + EmbeddingGemma-300M landed on main post-v1.1.1.
+        // Pin to branch until the next release is tagged.
+        .package(url: "https://github.com/john-rocky/coreml-llm", branch: "main")
     ],
     targets: [
         .target(

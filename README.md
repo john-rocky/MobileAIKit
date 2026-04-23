@@ -182,6 +182,18 @@ print(answer.citations.map(\.source))
 
 `HashingEmbedder` ships with `AIKit` — zero setup. Swap in your own `Embedder` once accuracy matters.
 
+**Recommended**: `EmbeddingGemmaEmbedder` (`AIKitCoreMLLLM`) runs Google's EmbeddingGemma-300M on the Apple Neural Engine — true transformer sentence embeddings with the published task-prefix + Matryoshka conventions. Requires a one-time ~295 MB download, so it's opt-in:
+
+```swift
+import AIKitCoreMLLLM
+
+let embedder = EmbeddingGemmaEmbedder(
+    modelsDir: URL.documentsDirectory.appending(path: "models"),
+    task: .retrievalDocument        // or .retrievalQuery at query time
+)
+let rag = RAGPipeline(embedder: embedder)   // 768-d unit-norm; pass dimension: 256 for a shorter Matryoshka prefix
+```
+
 ## Structured output (Codable)
 
 ```swift
@@ -312,6 +324,25 @@ let answer = try await AIKit.askWithTools(
     backend: backend
 )
 ```
+
+Out of the box, `CoreMLLLMBackend` handles tool calls by prompt-injecting a JSON protocol and parsing the reply — works with any model, zero extra weights.
+
+**Recommended**: `FunctionGemmaBackend` (`AIKitCoreMLLLM`) runs Google's FunctionGemma-270M on the Apple Neural Engine — natively emits `<start_function_call>name{json}<end_function_call>`, much higher tool-selection accuracy on small models than prompt injection. Requires a one-time ~420 MB download, so it's opt-in:
+
+```swift
+import AIKitCoreMLLLM
+
+let toolBackend = FunctionGemmaBackend(
+    modelsDir: URL.documentsDirectory.appending(path: "models")
+)
+let answer = try await AIKit.askWithTools(
+    "Turn on the flashlight and set a 5 minute timer.",
+    tools: registry,
+    backend: toolBackend
+)
+```
+
+Typical split: keep `CoreMLLLMBackend` (Gemma 4) for chat + vision + audio, use `FunctionGemmaBackend` for the tool-calling turn, then pass tool results back to the chat backend for the final user-facing answer.
 
 ## Long-term memory on SQLite
 
