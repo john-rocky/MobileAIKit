@@ -10,6 +10,70 @@ import UIKit
 /// Concrete set of checks the smoke test runs. Each check is a pure async
 /// closure that either returns a short success note or throws.
 enum SmokeChecks {
+    /// Opt-in checks for the Gemma 3 specialists shipped via `AIKitCoreMLLLM`.
+    /// Each check lazily downloads its bundle from HuggingFace on first load
+    /// (~420 MB FunctionGemma + ~295 MB EmbeddingGemma). The runner ignores
+    /// the passed-in backend and constructs its own.
+    static let gemma3: [Check] = [
+        Check(
+            name: "FunctionGemmaBackend (native tool call)",
+            detail: "Downloads FunctionGemma-270M on first run, asks it to call add_two_numbers",
+            runner: { _ in
+                let modelsDir = gemma3ModelsDir()
+                let fgBackend = FunctionGemmaBackend(modelsDir: modelsDir)
+                let registry = ToolRegistry()
+                let counter = CallCounter()
+                await registry.setAuditHandler { _, _, _ in counter.increment() }
+                let tool = TypedTool<CalcArgs, CalcResult>(
+                    spec: ToolSpec(
+                        name: "add_two_numbers",
+                        description: "Returns the sum of two integers.",
+                        parameters: .object(
+                            properties: ["a": .integer(), "b": .integer()],
+                            required: ["a", "b"]
+                        )
+                    )
+                ) { args in
+                    CalcResult(sum: args.a + args.b)
+                }
+                await registry.register(tool)
+                let out = try await AIKit.askWithTools(
+                    "What is 7 + 5? Use the add_two_numbers tool.",
+                    tools: registry,
+                    backend: fgBackend
+                )
+                let n = counter.value
+                if n == 0 {
+                    throw SmokeError("tool never executed. reply: \(trim(out, 80))")
+                }
+                return "tool fired \(n)×; reply: \(trim(out, 60))"
+            }
+        ),
+        Check(
+            name: "EmbeddingGemmaEmbedder (semantic similarity)",
+            detail: "Downloads EmbeddingGemma-300M on first run, checks near > far cosine",
+            runner: { _ in
+                let modelsDir = gemma3ModelsDir()
+                let embedder = EmbeddingGemmaEmbedder(
+                    modelsDir: modelsDir,
+                    task: .similarity
+                )
+                let anchor = try await embedder.embed("A cat is sleeping on a sofa.")
+                let near   = try await embedder.embed("A kitten is napping on a couch.")
+                let far    = try await embedder.embed("The stock market closed higher today.")
+                guard anchor.count == embedder.dimension else {
+                    throw SmokeError("unexpected dim \(anchor.count), expected \(embedder.dimension)")
+                }
+                let simNear = cosine(anchor, near)
+                let simFar  = cosine(anchor, far)
+                if !(simNear > simFar + 0.05) {
+                    throw SmokeError(String(format: "similar ≤ dissimilar (near=%.3f, far=%.3f)", simNear, simFar))
+                }
+                return String(format: "dim=%d, near=%.3f > far=%.3f", anchor.count, simNear, simFar)
+            }
+        ),
+    ]
+
     static let all: [Check] = [
         Check(
             name: "Backend loaded",
@@ -343,6 +407,25 @@ private func trim(_ s: String, _ max: Int) -> String {
     let t = s.replacingOccurrences(of: "\n", with: " ")
     if t.count <= max { return t }
     return String(t.prefix(max)) + "…"
+}
+
+/// App-support directory where the Gemma 3 bundles get cached across runs.
+/// Returns a `<Documents>/LocalAIKit/models` URL; creates the directory lazily.
+func gemma3ModelsDir() -> URL {
+    let base = URL.documentsDirectory
+        .appending(path: "LocalAIKit", directoryHint: .isDirectory)
+        .appending(path: "models", directoryHint: .isDirectory)
+    try? FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
+    return base
+}
+
+/// Dot-product cosine for two same-length [Float]. Both inputs from
+/// EmbeddingGemma are already L2-normalized, so this is just the dot.
+func cosine(_ a: [Float], _ b: [Float]) -> Float {
+    guard a.count == b.count else { return 0 }
+    var s: Float = 0
+    for i in 0..<a.count { s += a[i] * b[i] }
+    return s
 }
 
 /// Write a tiny .txt file to a unique location under /tmp for the smoke test

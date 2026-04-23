@@ -23,7 +23,13 @@ struct SmokeTestView: View {
     let backend: any AIBackend
 
     @State private var checks: [Check] = SmokeChecks.all
-    @State private var runIndex: Int? = nil
+    @State private var gemma3Checks: [Check] = SmokeChecks.gemma3
+    @State private var mainRunning = false
+    @State private var gemma3Running = false
+    @State private var mainIndex: Int? = nil
+    @State private var gemma3Index: Int? = nil
+
+    private var anyRunning: Bool { mainRunning || gemma3Running }
 
     var body: some View {
         List {
@@ -31,14 +37,32 @@ struct SmokeTestView: View {
                 Button {
                     Task { await runAll() }
                 } label: {
-                    Label(runIndex == nil ? "Run all checks" : "Running…", systemImage: "play.circle.fill")
+                    Label(mainRunning ? "Running…" : "Run all checks", systemImage: "play.circle.fill")
                         .font(.headline)
                 }
-                .disabled(runIndex != nil)
+                .disabled(anyRunning)
             }
             Section("Checks") {
                 ForEach(checks.indices, id: \.self) { i in
-                    CheckRow(check: checks[i], active: runIndex == i)
+                    CheckRow(check: checks[i], active: mainIndex == i)
+                }
+            }
+
+            Section {
+                Button {
+                    Task { await runGemma3() }
+                } label: {
+                    Label(gemma3Running ? "Running…" : "Run Gemma 3 checks", systemImage: "play.circle")
+                        .font(.headline)
+                }
+                .disabled(anyRunning)
+                Text("Opt-in. First run downloads ~420 MB FunctionGemma + ~295 MB EmbeddingGemma to Documents/LocalAIKit/models, then caches for subsequent runs.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Section("Gemma 3 specialists") {
+                ForEach(gemma3Checks.indices, id: \.self) { i in
+                    CheckRow(check: gemma3Checks[i], active: gemma3Index == i)
                 }
             }
         }
@@ -46,9 +70,11 @@ struct SmokeTestView: View {
 
     @MainActor
     private func runAll() async {
+        mainRunning = true
+        defer { mainRunning = false; mainIndex = nil }
         for i in checks.indices { checks[i] = checks[i].resetting() }
         for i in checks.indices {
-            runIndex = i
+            mainIndex = i
             let c = checks[i]
             let start = Date()
             do {
@@ -59,7 +85,25 @@ struct SmokeTestView: View {
                 checks[i] = c.finished(.fail(msg), elapsed: Date().timeIntervalSince(start))
             }
         }
-        runIndex = nil
+    }
+
+    @MainActor
+    private func runGemma3() async {
+        gemma3Running = true
+        defer { gemma3Running = false; gemma3Index = nil }
+        for i in gemma3Checks.indices { gemma3Checks[i] = gemma3Checks[i].resetting() }
+        for i in gemma3Checks.indices {
+            gemma3Index = i
+            let c = gemma3Checks[i]
+            let start = Date()
+            do {
+                let note = try await c.runner(backend)
+                gemma3Checks[i] = c.finished(.pass(note: note), elapsed: Date().timeIntervalSince(start))
+            } catch {
+                let msg = (error as? AIError)?.errorDescription ?? error.localizedDescription
+                gemma3Checks[i] = c.finished(.fail(msg), elapsed: Date().timeIntervalSince(start))
+            }
+        }
     }
 }
 
