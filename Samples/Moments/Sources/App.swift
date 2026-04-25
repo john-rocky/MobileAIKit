@@ -4,45 +4,41 @@ import AIKitCoreMLLLM
 
 @main
 struct MomentsApp: App {
-    @State private var store: MomentStore?
-    @State private var backend: (any AIBackend)?
-    @State private var setupError: String?
+    private let backend = CoreMLLLMBackend(model: .gemma4e2b)
+    @State private var storeResult: Result<MomentStore, Error> = Result { try MomentStore() }
 
     var body: some Scene {
         WindowGroup {
-            Group {
-                if let store, let backend {
+            CoreMLModelLoaderView(
+                backend: backend,
+                appName: "Moments",
+                appIcon: "sparkles.tv"
+            ) {
+                switch storeResult {
+                case .success(let store):
                     RootView(store: store, backend: backend)
-                } else if let setupError {
-                    VStack(spacing: 12) {
-                        Image(systemName: "exclamationmark.triangle.fill").font(.largeTitle).foregroundStyle(.orange)
-                        Text("Setup failed").font(.headline)
-                        Text(setupError).foregroundStyle(.secondary).multilineTextAlignment(.center).padding()
-                        Button("Retry") { Task { await bootstrap() } }.buttonStyle(.borderedProminent)
-                    }.padding()
-                } else {
-                    VStack(spacing: 16) {
-                        Image(systemName: "sparkles.tv").font(.system(size: 60)).foregroundStyle(.tint)
-                        Text("Moments").font(.largeTitle).bold()
-                        Text("Preparing Gemma 4 on-device…")
-                        ProgressView()
-                    }.padding().task { await bootstrap() }
+                case .failure(let error):
+                    StoreErrorView(message: error.localizedDescription) {
+                        storeResult = Result { try MomentStore() }
+                    }
                 }
             }
         }
     }
+}
 
-    @MainActor
-    private func bootstrap() async {
-        setupError = nil
-        do {
-            let store = try MomentStore()
-            let backend = CoreMLLLMBackend(model: .gemma4e2b)
-            try await backend.load()
-            self.store = store
-            self.backend = backend
-        } catch {
-            self.setupError = error.localizedDescription
+private struct StoreErrorView: View {
+    let message: String
+    let retry: () -> Void
+    var body: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "externaldrive.badge.exclamationmark")
+                .font(.largeTitle)
+                .foregroundStyle(.orange)
+            Text("Couldn't open local store").font(.headline)
+            Text(message).font(.footnote).foregroundStyle(.secondary).multilineTextAlignment(.center)
+            Button("Retry", action: retry).buttonStyle(.borderedProminent)
         }
+        .padding()
     }
 }
