@@ -31,6 +31,14 @@ public final class CoreMLAgentBackend: AIBackend, DownloadableBackend, @unchecke
     public let toolBackend: FunctionGemmaBackend
     public let info: BackendInfo
 
+    /// Cap on how many tool specs are forwarded to FunctionGemma per turn.
+    /// FunctionGemma-270M's context window is 2048 tokens and each tool spec
+    /// serializes to a few hundred — pushing 20+ specs through reliably blows
+    /// the prefill budget. The first `maxToolsForRouter` specs are forwarded;
+    /// the rest are dropped for the FunctionGemma call (the chat-backend
+    /// fallback still sees zero tools, so this only affects routing accuracy).
+    public var maxToolsForRouter: Int = 12
+
     public init(
         chatBackend: CoreMLLLMBackend,
         toolBackend: FunctionGemmaBackend
@@ -87,8 +95,36 @@ public final class CoreMLAgentBackend: AIBackend, DownloadableBackend, @unchecke
         tools: [ToolSpec],
         config: GenerationConfig
     ) async throws -> GenerationResult {
-        let target: any AIBackend = tools.isEmpty ? chatBackend : toolBackend
-        return try await target.generate(messages: messages, tools: tools, config: config)
+        if tools.isEmpty {
+            log("→ chat (no tools)")
+            return try await chatBackend.generate(messages: messages, tools: [], config: config)
+        }
+        let routerTools = Array(tools.prefix(maxToolsForRouter))
+        if routerTools.count < tools.count {
+            log("→ tool router (\(routerTools.count) of \(tools.count) tools, capped to fit FunctionGemma context)")
+        } else {
+            log("→ tool router (\(routerTools.count) tools)")
+        }
+        do {
+            let result = try await toolBackend.generate(messages: messages, tools: routerTools, config: config)
+            if isUsable(result.message) {
+                log("← tool router produced \(result.message.toolCalls.count) call(s), \(result.message.content.count) chars")
+                return result
+            }
+            // FunctionGemma produced nothing actionable (empty text + no parsed
+            // tool call — small 270M model overwhelmed by many tool specs or
+            // hallucinated a name not in the registry). Fall back to chat.
+            log("← tool router empty, falling back to chat backend")
+        } catch {
+            // FunctionGemma can throw on context overflow (its window is 2048
+            // tokens, easily blown when a host registers 20+ tools). Surface
+            // the error for debugging, then fall back so the user gets a reply.
+            log("← tool router threw \(error.localizedDescription), falling back to chat backend")
+        }
+        // Fallback uses tools=[] so the chat backend doesn't try to emit a
+        // tool call itself (E2B is bad at it; the whole reason we route via
+        // FunctionGemma). At least the user gets a chat response.
+        return try await chatBackend.generate(messages: messages, tools: [], config: config)
     }
 
     public func stream(
@@ -96,8 +132,69 @@ public final class CoreMLAgentBackend: AIBackend, DownloadableBackend, @unchecke
         tools: [ToolSpec],
         config: GenerationConfig
     ) -> AsyncThrowingStream<GenerationChunk, Error> {
-        let target: any AIBackend = tools.isEmpty ? chatBackend : toolBackend
-        return target.stream(messages: messages, tools: tools, config: config)
+        if tools.isEmpty {
+            log("→ chat stream (no tools)")
+            return chatBackend.stream(messages: messages, tools: [], config: config)
+        }
+        let routerTools = Array(tools.prefix(maxToolsForRouter))
+        if routerTools.count < tools.count {
+            log("→ tool router stream (\(routerTools.count) of \(tools.count) tools, capped)")
+        } else {
+            log("→ tool router stream (\(routerTools.count) tools)")
+        }
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                var routedToFallback = false
+                do {
+                    let result = try await self.toolBackend.generate(
+                        messages: messages, tools: routerTools, config: config
+                    )
+                    if self.isUsable(result.message) {
+                        self.log("← tool router stream produced \(result.message.toolCalls.count) call(s), \(result.message.content.count) chars")
+                        if !result.message.content.isEmpty {
+                            continuation.yield(GenerationChunk(delta: result.message.content))
+                        }
+                        for call in result.message.toolCalls {
+                            continuation.yield(GenerationChunk(toolCall: call))
+                        }
+                        continuation.yield(GenerationChunk(finished: true, finishReason: result.finishReason))
+                        continuation.finish()
+                        return
+                    }
+                    self.log("← tool router stream empty, falling back to chat backend")
+                    routedToFallback = true
+                } catch {
+                    self.log("← tool router stream threw \(error.localizedDescription), falling back to chat backend")
+                    routedToFallback = true
+                }
+                guard routedToFallback else { return }
+                do {
+                    // tools=[] so chat backend just chats; no double-attempt
+                    // at tool emission via prompt injection.
+                    let fallback = self.chatBackend.stream(
+                        messages: messages, tools: [], config: config
+                    )
+                    for try await chunk in fallback {
+                        continuation.yield(chunk)
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private func isUsable(_ message: Message) -> Bool {
+        if !message.toolCalls.isEmpty { return true }
+        return !message.content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func log(_ message: String) {
+        #if DEBUG
+        print("[CoreMLAgentBackend] \(message)")
+        #endif
     }
 
     public func tokenCount(for messages: [Message]) async throws -> Int {
