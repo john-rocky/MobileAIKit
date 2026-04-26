@@ -4,7 +4,7 @@ import AIKitCoreMLLLM
 
 @main
 struct AgentPlaygroundApp: App {
-    private let backend = CoreMLLLMBackend(model: .gemma4e2b)
+    private let backend = CoreMLAgentBackend()
 
     var body: some Scene {
         WindowGroup {

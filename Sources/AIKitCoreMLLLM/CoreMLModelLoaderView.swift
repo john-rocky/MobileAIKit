@@ -2,14 +2,15 @@
 import SwiftUI
 import AIKit
 
-/// Drop-in container that downloads + warms up a ``CoreMLLLMBackend`` while
+/// Drop-in container that downloads + warms up a ``DownloadableBackend`` while
 /// showing a real progress UI, then renders ``loaded`` once the backend is
-/// ready.
+/// ready. Works with both single-model backends (``CoreMLLLMBackend``) and
+/// composite ones (``CoreMLAgentBackend``).
 ///
 /// ```swift
 /// @main
 /// struct MyApp: App {
-///     private let backend = CoreMLLLMBackend(model: .gemma4e2b)
+///     private let backend = CoreMLAgentBackend()  // E2B + FunctionGemma
 ///     var body: some Scene {
 ///         WindowGroup {
 ///             CoreMLModelLoaderView(
@@ -23,16 +24,9 @@ import AIKit
 ///     }
 /// }
 /// ```
-///
-/// Phases displayed to the user:
-///
-/// 1. **Downloading** — fraction + status string from `ModelDownloader`.
-/// 2. **Warming up** — ANE compile / weights map status from `CoreMLLLM.load`.
-/// 3. **Ready** — `loaded()` is rendered.
-/// 4. **Failed** — error message + Retry button.
 @available(iOS 17.0, macOS 14.0, visionOS 1.0, *)
-public struct CoreMLModelLoaderView<Loaded: View>: View {
-    private let backend: CoreMLLLMBackend
+public struct CoreMLModelLoaderView<Backend: DownloadableBackend, Loaded: View>: View {
+    private let backend: Backend
     private let appName: String
     private let appIcon: String
     private let loaded: () -> Loaded
@@ -40,7 +34,7 @@ public struct CoreMLModelLoaderView<Loaded: View>: View {
     @State private var phase: ModelLoadPhase = .idle
 
     public init(
-        backend: CoreMLLLMBackend,
+        backend: Backend,
         appName: String,
         appIcon: String = "wand.and.stars",
         @ViewBuilder loaded: @escaping () -> Loaded
@@ -59,8 +53,8 @@ public struct CoreMLModelLoaderView<Loaded: View>: View {
                 ModelLoaderSetupView(
                     appName: appName,
                     appIcon: appIcon,
-                    modelName: modelLabel.name,
-                    modelSize: modelLabel.size,
+                    modelName: backend.displayModelName,
+                    modelSize: backend.displayModelSize,
                     phase: phase
                 ) {
                     Task { await bootstrap() }
@@ -72,54 +66,20 @@ public struct CoreMLModelLoaderView<Loaded: View>: View {
         }
     }
 
-    private var modelLabel: (name: String, size: String?) {
-        switch backend.source {
-        case .directory(let url): return (url.lastPathComponent, nil)
-        case .model(let info): return (info.name, info.size)
-        }
-    }
-
     @MainActor
     private func bootstrap() async {
         phase = .idle
         do {
-            if !backend.isDownloaded {
-                phase = .downloading(fraction: 0, status: "Preparing…")
-                try await backend.download { fraction, status in
-                    Task { @MainActor in
-                        phase = .downloading(
-                            fraction: fraction,
-                            status: status.isEmpty ? "Downloading…" : status
-                        )
-                    }
-                }
-            }
-
-            phase = .warmingUp(status: "Warming up the ANE…")
-            try await backend.load { status in
+            try await backend.bootstrap { newPhase in
                 Task { @MainActor in
-                    phase = .warmingUp(
-                        status: status.isEmpty ? "Warming up the ANE…" : status
-                    )
+                    phase = newPhase
                 }
             }
-
             phase = .ready
         } catch {
             phase = .failed(error.localizedDescription)
         }
     }
-}
-
-// MARK: - Phase
-
-@available(iOS 17.0, macOS 14.0, visionOS 1.0, *)
-public enum ModelLoadPhase: Equatable, Sendable {
-    case idle
-    case downloading(fraction: Double, status: String)
-    case warmingUp(status: String)
-    case ready
-    case failed(String)
 }
 
 // MARK: - Setup view

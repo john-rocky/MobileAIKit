@@ -5,7 +5,7 @@ import CoreML
 import CoreGraphics
 import ImageIO
 
-public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
+public final class CoreMLLLMBackend: AIBackend, DownloadableBackend, @unchecked Sendable {
     public enum Source: Sendable {
         case directory(URL)
         case model(ModelDownloader.ModelInfo)
@@ -134,6 +134,42 @@ public final class CoreMLLLMBackend: AIBackend, @unchecked Sendable {
         switch source {
         case .directory(let url): return FileManager.default.fileExists(atPath: url.path)
         case .model(let info): return ModelDownloader.shared.isDownloaded(info)
+        }
+    }
+
+    // MARK: - DownloadableBackend
+
+    public var displayModelName: String {
+        switch source {
+        case .directory(let url): return url.lastPathComponent
+        case .model(let info): return info.name
+        }
+    }
+
+    public var displayModelSize: String? {
+        switch source {
+        case .directory: return nil
+        case .model(let info): return info.size
+        }
+    }
+
+    public func bootstrap(
+        progress: @Sendable @escaping (ModelLoadPhase) -> Void
+    ) async throws {
+        if !isDownloaded {
+            progress(.downloading(fraction: 0, status: "Preparing…"))
+            try await download { fraction, status in
+                progress(.downloading(
+                    fraction: fraction,
+                    status: status.isEmpty ? "Downloading…" : status
+                ))
+            }
+        }
+        progress(.warmingUp(status: "Warming up the ANE…"))
+        try await load { status in
+            progress(.warmingUp(
+                status: status.isEmpty ? "Warming up the ANE…" : status
+            ))
         }
     }
 
